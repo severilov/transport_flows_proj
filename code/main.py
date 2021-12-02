@@ -28,7 +28,7 @@ if __name__ == '__main__':
     trips_name = 'Custom_trips.tntp'
 
     handler = dh.DataHandler()
-    graph_data = handler.GetGraphData(net_name, columns = ['init_node', 'term_node', 'capacity', 'free_flow_time'])
+    graph_data = handler.GetGraphData(net_name, columns=['init_node', 'term_node', 'capacity', 'free_flow_time'])
     graph_correspondences, total_od_flow = handler.GetLW_dicts(trips_name)
 
     handler = dh.DataHandler()
