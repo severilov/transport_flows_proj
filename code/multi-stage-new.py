@@ -1,4 +1,5 @@
 import warnings
+from pathlib import Path
 # warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import numpy as np
@@ -27,16 +28,53 @@ def get_times_inverse_func(capacity, times, rho=0.15, mu=0.25):
 
 
 def get_LW(L_dict, W_dict, new_to_old):
+    """
+    Given L- and W-dicts and new nodes mapping, return L and W as np.arrays.
+    Also returns people_num, total sum of L's.
+    Resulting arrays contain on i'th place value for new_to_old[i] node.
+    Also, L and W are divided by their means (for some purpose).
+    ----------
+    Arguments:
+        L_dict: dict(int: int)
+            mapping between nodes and their l's
+        W_dict: dict(int: int)
+            mapping between nodes and their w's
+        new_to_old: dict(int: int)
+            mapping between old indices of nodes and new
+    ----------
+    Returns:
+        L: np.array
+            Normalized array of l values.
+        w: np.array
+            Normalized array of w values.
+        people_num: int
+    """
+    # reindex and turn to np.array
     L = np.array([L_dict[new_to_old[i]] for i in range(len(L_dict))], dtype=np.double)
     W = np.array([W_dict[new_to_old[i]] for i in range(len(W_dict))], dtype=np.double)
     people_num = L.sum()
+    # normalize
     L /= np.nansum(L)
     W /= np.nansum(W)
     return L, W, people_num
 
+def create_results_dir():
+    """
+    Create folders necessary for storing results.
+    There is no arguments because it would be a pain the ass.
+    """
+    results_path = Path('results/')
+    children = []
+    for child in ['input_data', 'iter', 'multi']:
+        children.append(results_path / child)
+    for child in ['corr_matrix', 'flows', 'inverse_func', 'subg', 'times']:
+        children.append(children[2] / child)
+    [child.mkdir(exist_ok=True) for child in children]
+
 
 if __name__ == '__main__':
-
+    create_results_dir()
+    # read data from txt files
     handler = dh.DataHandler()
     graph_data = handler.GetGraphData(eval(f'handler.{parsers}_net_parser'),
                                       columns=['init_node', 'term_node', 'capacity', 'free_flow_time'])
@@ -44,6 +82,7 @@ if __name__ == '__main__':
     L_dict, W_dict = handler.GetLW_dicts(eval(f'handler.{parsers}_corr_parser'))
     handler.save_input_data_to_res(graph_data, L_dict, W_dict)
 
+    # don't understand why DataHandler is reinitialized.
     handler = dh.DataHandler()
 
     max_iter = 2
@@ -104,9 +143,9 @@ if __name__ == '__main__':
 
         subg = result['subg']
 
-        np.savetxt('KEV_res/multi/flows/' + str(ms_i) + '_flows.txt', result['flows'], delimiter=' ')
-        np.savetxt('KEV_res/multi/times/' + str(ms_i) + '_time.txt', result['times'], delimiter=' ')
-        np.savetxt('KEV_res/multi/corr_matrix/' + str(ms_i) + '_corr_matrix.txt', rec, delimiter=' ')
-        np.savetxt('KEV_res/multi/inverse_func/' + str(ms_i) + '_inverse_func.txt', flows_inverse_func,
+        np.savetxt('results/multi/flows/' + str(ms_i) + '_flows.txt', result['flows'], delimiter=' ')
+        np.savetxt('results/multi/times/' + str(ms_i) + '_time.txt', result['times'], delimiter=' ')
+        np.savetxt('results/multi/corr_matrix/' + str(ms_i) + '_corr_matrix.txt', rec, delimiter=' ')
+        np.savetxt('results/multi/inverse_func/' + str(ms_i) + '_inverse_func.txt', flows_inverse_func,
                     delimiter=' ')
-        np.savetxt('KEV_res/multi/subg/' + str(ms_i) + '_nabla_func.txt', subg, delimiter=' ')
+        np.savetxt('results/multi/subg/' + str(ms_i) + '_nabla_func.txt', subg, delimiter=' ')

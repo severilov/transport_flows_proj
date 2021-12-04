@@ -20,6 +20,25 @@ TNTP_NET_FNAME = '../data/Custom_trips.tntp'  # '../data/SiouxFalls_net.tntp'
 class DataHandler:
     @staticmethod
     def vladik_net_parser():
+        """
+        Read data/vl_links.txt and data/vl_nodes.txt files containing Vladivostok transport network data.
+        By default, reads _test versions of these files.
+        --------
+        Returns:
+            df: pd.Dataframe
+                Contains following columns:
+                    init_node
+                    term_node
+                    capacity
+                    free_flow_time
+                    ['xa', 'xb', 'ya', 'yb'] - geographic coordinates of 'init_node' and 'term_node'
+            nodes: pd.Dataframe
+                Contains following columns:
+                    node
+                    ['x', 'y', 'z'] - geographic coordinates of nodes
+
+                        
+        """
         graph_data = {}
         links = pd.read_csv(conf.vl_links_file, sep='\t', skiprows=0)
         links_ab = links[['ANODE', 'BNODE', 'cap_ab']].copy()
@@ -36,7 +55,7 @@ class DataHandler:
         df = df[df.capacity > 0]
         df.drop_duplicates(inplace=True)
 
-        nodes = pd.read_csv('../data/vl_nodes.txt', sep='\t', skiprows=0).set_index('node')
+        nodes = pd.read_csv('data/vl_nodes.txt', sep='\t', skiprows=0).set_index('node')
         xa, xb, ya, yb = [], [], [], []
         for i in df.index:
             an, bn = df.init_node[i], df.term_node[i]
@@ -103,33 +122,15 @@ class DataHandler:
         return df, nt, first_thru_node
 
     @staticmethod
-    def custom_corr_parser():
-
-        total_od_flow = 12000
-
-        L_dict = {1: 4000, 2: 4000, 3: 4000}
-        W_dict = {1: 4000, 2: 4000, 3: 4000}
-
-        return L_dict, W_dict
-
-    def GetGraphData(self, parser, columns):
-
-        graph_data = {}
-        gt, nt, first_thru_node = parser()
-        gt = gt[columns]
-
-        gt.insert(loc=list(gt).index('init_node') + 1, column='init_node_thru',
-                  value=(gt['init_node'] >= first_thru_node))
-        gt.insert(loc=list(gt).index('term_node') + 1, column='term_node_thru',
-                  value=(gt['term_node'] >= first_thru_node))
-        graph_data['graph_table'] = gt
-        graph_data['nodes number'] = len(set(gt.init_node.values) | set(gt.term_node.values))
-        graph_data['links number'] = gt.shape[0]
-        graph_data['nodes_table'] = nt
-        return graph_data
-
-    @staticmethod
     def vladik_corr_parser():
+        """
+        Read data/vl_trips.txt file and get constraints on correspondencies. Поясню на русском - 
+        получаем (l, w) из статьи, там это называется источники и стоки корреспонденций.
+        --------
+        Returns:
+            dict(int: int) - dict with nodes as keys and corresponding l's
+            dict(int: int) - dict with nodes as keys and corresponding w's
+        """
         with open(conf.vl_trips_file, 'r') as fin:
             fin = list(fin)[1:]
             nodes = [int(x) for x in fin[0].split(' ')]
@@ -163,6 +164,49 @@ class DataHandler:
         return L_dict, W_dict  # , od
 
     @staticmethod
+    def custom_corr_parser():
+
+        total_od_flow = 12000
+
+        L_dict = {1: 4000, 2: 4000, 3: 4000}
+        W_dict = {1: 4000, 2: 4000, 3: 4000}
+
+        return L_dict, W_dict
+
+    def GetGraphData(self, parser, columns):
+        """
+        Get data from desired dataset and convert it to pd.Dataframe of desired format.
+        ----------
+        Arguments:
+            parser: function()
+                One of net_parsers of these class.
+            columns: list(str)
+                Which columns to leave in resulting dataset.
+        ----------
+        Returns:
+            graph_data: dict()
+                Contains 4 fields:
+                'graph_table' - pd.Dataframe, transport graph;
+                'nodes_number' - int, number of unique nodes in graph;
+                'links_number' - int, number of links in graph;
+                'nodes_table' - pd.Dataframe, nodes with their coordinates;
+        """
+        graph_data = {}
+        gt, nt, first_thru_node = parser()
+        gt = gt[columns]
+
+        # following two lines of code I don't understand much
+        gt.insert(loc=list(gt).index('init_node') + 1, column='init_node_thru',
+                  value=(gt['init_node'] >= first_thru_node))
+        gt.insert(loc=list(gt).index('term_node') + 1, column='term_node_thru',
+                  value=(gt['term_node'] >= first_thru_node))
+        graph_data['graph_table'] = gt
+        graph_data['nodes number'] = len(set(gt.init_node.values) | set(gt.term_node.values))
+        graph_data['links number'] = gt.shape[0]
+        graph_data['nodes_table'] = nt
+        return graph_data
+
+    @staticmethod
     def T_matrix_from_dict(T_dict, shape, old_to_new):
         T = np.zeros(shape)
         for key in T_dict.keys():
@@ -172,13 +216,34 @@ class DataHandler:
 
     @staticmethod
     def GetLW_dicts(parser):
+        """
+        Wrapper for LWparsers of this class.
+        ----------
+        Arguments:
+            parser: function() - one of corr_parsers of this class.
+        ----------
+        Returns:
+            L_dict: dict(int: int)
+                dict with nodes as keys and corresponding l's
+            W_dict: dict(int: int)
+                dict with nodes as keys and corresponding w's
+        """
         L_dict, W_dict = parser()
 
         return L_dict, W_dict
 
     @staticmethod
     def save_input_data_to_res(graph_data, L_dict, W_dict):
-        root = 'KEV_res/input_data/'
+        """
+        Save transport graph and LW-dicts to the folder results/input_data.
+        Returns nothing.
+        ----------
+        Arguments:
+            graph_data: pd.Dataframe - transport graph
+            L_dict: dict() - L-dict from one of LWparsers of this class
+            W_dict: dict() - W-dict from one of LWparsers of this class
+        """
+        root = 'results/input_data/'
         with open(root + 'graph_data.pickle', 'wb') as fp:
             pickle.dump(graph_data, fp)
         with open(root + 'L_dict.json', 'w') as fp:
@@ -211,6 +276,22 @@ class DataHandler:
         return C
 
     def reindexed_empty_corr_matrix(self, corr_dict):
+        """
+        Reindex nodes and return corresponding matrices and empty correspondence matrix.
+        Receives as input dict containing init_nodes as keys. Every value of this dict is dict of form
+        {'targets': list(int)} containing list of all term_nodes.
+        ----------
+        Arguments:
+            corr_dict: dict(int: dict('targets': list(int)))
+        ----------
+        Returns:
+            empty_corr_matrix: np.array
+                (n x n) matrix of zeros, where n is number of unique nodes in init_nodes and term_nodes.
+            old_to_new: dict(int: int)
+                mapping between old indexes of nodes and new
+            new_to_old: dict(int: int)
+                mapping between new indexes of nodes and old
+        """
         indexes = list(set(corr_dict.keys()) | set(sum([d['targets'] for d in corr_dict.values()], [])))
 
         n = len(indexes)

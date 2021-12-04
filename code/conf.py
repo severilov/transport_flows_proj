@@ -1,9 +1,9 @@
-# parsers = 'vladik'
+parsers = 'vladik'
 # parsers = 'tntpd'
-parsers = 'custom'
+# parsers = 'custom'
 
-vl_links_file = '../data/vl_links'
-vl_trips_file = '../data/vl_trips'
+vl_links_file = 'data/vl_links'
+vl_trips_file = 'data/vl_trips'
 
 # small testing subnet
 vl_links_file += '_test'

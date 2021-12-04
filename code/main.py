@@ -5,9 +5,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rc
-import tensorflow as tf
-import tensorflow.distributions
-# from tensorflow.distributions import Dirichlet, Multinomial
 from scipy.stats import entropy
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d, Axes3D
