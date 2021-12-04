@@ -1,0 +1,13 @@
+name: vladik
+channels:
+  - default
+  - conda-forge
+dependencies:
+  - python=3.8.5
+  - scipy
+  - numpy
+  - jupyter
+  - numba
+  - graph-tool
+  - matplotlib
+  - scanf
