@@ -269,7 +269,7 @@ class DataHandler:
             dests = copy.deepcopy(dests)
             d = {'targets': list(map(term_to_ind.get, dests['targets']))}
             if fill_corrs:
-                d['corrs']: dests['corrs']
+                d['corrs'] = dests['corrs']
             correspondences[init_to_ind[origin]] = d
 
         inds_to_nodes = dict(zip(range(len(nodes)), nodes))
