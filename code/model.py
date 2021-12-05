@@ -15,6 +15,21 @@ import solvers.weighted_dual_averages_method as wda
 
 class Model:
     def __init__(self, graph_data, graph_correspondences, total_od_flow, mu=0.25, rho=0.15):
+        """
+        Reindexes nodes according to their roles in graph and creates TransportGraph instance.
+        ----------
+        Arguments:
+            graph_data: pd.Dataframe
+                This is output dict of DataHandler.getGraphData.
+            graph_correspondencies: dict
+                This is dict of form like 'empty_corr_dict' from multi-stage-new.py
+            total_od_flow: int
+                Total number of people or, formally, sum of l's from paper.
+            mu: float
+                Parameter for computing cost function tau(f) from paper.
+            rho: float
+                Хз что это такое, нужно в Оракулах.
+        """
         self.total_od_flow = total_od_flow
         self.mu = mu
         self.rho = rho
@@ -23,24 +38,60 @@ class Model:
         self.graph = tg.TransportGraph(self.graph_table, len(self.inds_to_nodes), graph_data['links number'])
 
     def refresh_correspondences(self, graph_data, corrs_dict):
+        """
+        Wrapper for Model._index_nodes method. See docstring for that method for more info.
+        ----------
+        Arguments:
+            graph_table: pd.Dataframe
+                This is 'graph_table' from DataHandler.getGraphData output dict.
+            graph_correspondencies: dict
+                This is dict of form like 'empty_corr_dict' from multi-stage-new.py
+        """
         self.inds_to_nodes, self.graph_correspondences, _ = self._index_nodes(graph_data['graph_table'], corrs_dict)
 
     @staticmethod
     def _index_nodes(graph_table, graph_correspondences, fill_corrs=True):
+        """
+        Another reindexing of nodes. This time they are indexed to ensure
+        that 'true' init nodes are first, then 'through' nodes and then 'true' term.
+        ----------
+        Arguments:
+            graph_table: pd.Dataframe
+                This is 'graph_table' from DataHandler.getGraphData output dict.
+            graph_correspondencies: dict
+                This is dict of form like 'empty_corr_dict' from multi-stage-new.py
+            fill_corrs: bool
+                If graph_correspondencies dict already have correspondence values,
+                fill'em in reindexed dict.
+        ----------
+        Returns:
+            inds_to_nodes: dict(int: int)
+                Mapping from new nodes indices to old.
+            correspondences: dict
+                Reindexed graph_correspondences.
+            table: pd.Dataframe
+                graph_table with reindexed 'init_node' and 'term_node' columns.
+        """
         table = graph_table.copy()
+        # Don't completely understand what happens here either.
+        # These inits and terms are those with id's less than 
+        # 'first_thru_node' parameter of DataHandler.vladik_net_parser
+        # I suppose these are 'true' inits and terms, and through_nodes are just intermediate?
         inits = np.unique(table['init_node'][table['init_node_thru'] == False])
         terms = np.unique(table['term_node'][table['term_node_thru'] == False])
         through_nodes = np.unique([table['init_node'][table['init_node_thru'] == True],
                                    table['term_node'][table['term_node_thru'] == True]])
-
-        # print(through_nodes)
         nodes = np.concatenate((inits, through_nodes, terms))
+
+        # remap nodes once again
         nodes_inds = list(zip(nodes, np.arange(len(nodes))))
+        inds_to_nodes = dict(zip(range(len(nodes)), nodes))
         init_to_ind = dict(nodes_inds[: len(inits) + len(through_nodes)])
         term_to_ind = dict(nodes_inds[len(inits):])
-
         table['init_node'] = table['init_node'].map(init_to_ind)
         table['term_node'] = table['term_node'].map(term_to_ind)
+
+        # get correspondeces in form of dict: origin -> dict{'targets': list of targets}
         correspondences = {}
         for origin, dests in graph_correspondences.items():
             dests = copy.deepcopy(dests)
@@ -49,7 +100,6 @@ class Model:
                 d['corrs'] = dests['corrs']
             correspondences[init_to_ind[origin]] = d
 
-        inds_to_nodes = dict(zip(range(len(nodes)), nodes))
         return inds_to_nodes, correspondences, table
 
     def find_equilibrium(self, solver_name='ustm', composite=True, solver_kwargs={}, base_flows=None):

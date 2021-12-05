@@ -32,7 +32,7 @@ def get_LW(L_dict, W_dict, new_to_old):
     Given L- and W-dicts and new nodes mapping, return L and W as np.arrays.
     Also returns people_num, total sum of L's.
     Resulting arrays contain on i'th place value for new_to_old[i] node.
-    Also, L and W are divided by their means (for some purpose).
+    Also, L and W are divided by their means to satisfy constraints from paper.
     ----------
     Arguments:
         L_dict: dict(int: int)
@@ -48,12 +48,13 @@ def get_LW(L_dict, W_dict, new_to_old):
         w: np.array
             Normalized array of w values.
         people_num: int
+            Total sum of l's. Has the meaning of total number of people.
     """
     # reindex and turn to np.array
     L = np.array([L_dict[new_to_old[i]] for i in range(len(L_dict))], dtype=np.double)
     W = np.array([W_dict[new_to_old[i]] for i in range(len(W_dict))], dtype=np.double)
     people_num = L.sum()
-    # normalize
+    # normalize because in paper we have constraints sum(L) = 1, sum(W) = 1
     L /= np.nansum(L)
     W /= np.nansum(W)
     return L, W, people_num
@@ -97,6 +98,7 @@ if __name__ == '__main__':
 
     print(f'L, W, people_num {L, W, people_num}, total_od_flow: {total_od_flow}')
     model = md.Model(graph_data, empty_corr_dict, total_od_flow, mu=0.25)
+    # initialize dict with T_ij values from free flow times as first iteration
     T_dict = handler.get_T_from_t(graph_data['graph_table']['free_flow_time'],
                                   graph_data, model)
     T = handler.T_matrix_from_dict(T_dict, empty_corr_matrix.shape, old_to_new)

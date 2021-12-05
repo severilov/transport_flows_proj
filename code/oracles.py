@@ -263,6 +263,20 @@ def der_f(x, x_0, a, mu):
     return 1.0 + a * mu * x ** (mu - 1)
 
 class HOracle(BaseOracle):
+    """
+    Короче эта штука каким-то боком связана с обратной функцией затрат на проезд по ребру.
+    Я не смог установить точного соответствия, к сожалению, но очень похоже что:
+    ----------
+    Arguments:
+        capacities:
+            Максимальные пропускные способности ребер
+        freeflowtimes:
+            Время проезда ребер по свободным дорогам
+        mu:
+            Это mu из статьи в -1 степени (или нет)
+        rho:
+            Вот этого я совсем не понял пока что
+    """
     def __init__(self, freeflowtimes, capacities, rho = 10.0, mu = 0.25):  
         self.links_number = len(freeflowtimes)
         self.rho = rho

@@ -186,7 +186,7 @@ class DataHandler:
         Returns:
             graph_data: dict()
                 Contains 4 fields:
-                'graph_table' - pd.Dataframe, transport graph;
+                'graph_table' - pd.Dataframe, data for transport graph;
                 'nodes_number' - int, number of unique nodes in graph;
                 'links_number' - int, number of links in graph;
                 'nodes_table' - pd.Dataframe, nodes with their coordinates;
@@ -196,6 +196,7 @@ class DataHandler:
         gt = gt[columns]
 
         # following two lines of code I don't understand much
+        # these fields later are used in model.__init__
         gt.insert(loc=list(gt).index('init_node') + 1, column='init_node_thru',
                   value=(gt['init_node'] >= first_thru_node))
         gt.insert(loc=list(gt).index('term_node') + 1, column='term_node_thru',
@@ -208,6 +209,22 @@ class DataHandler:
 
     @staticmethod
     def T_matrix_from_dict(T_dict, shape, old_to_new):
+        """
+        Create matrix from T_dict. T_dict should contain original nodes indices.
+        ----------
+        Arguments:
+            T_dict: dict
+                Keys - (node_i, node_j), values - T_ij
+            shape: tuple of ints
+                Shape of output matrix
+            old_to_new: dict(int: int)
+                Mapping between original nodes indices and new.
+        ---------
+        Returns:
+            T_matrix: np.array
+                Array of given shape. Indices of T_matrix and T_dict
+                are linked with old_to_new mapping.
+        """
         T = np.zeros(shape)
         for key in T_dict.keys():
             source, target = old_to_new[key[0]], old_to_new[key[1]]
@@ -235,11 +252,11 @@ class DataHandler:
     @staticmethod
     def save_input_data_to_res(graph_data, L_dict, W_dict):
         """
-        Save transport graph and LW-dicts to the folder results/input_data.
+        Save transport graph data and LW-dicts to the folder results/input_data.
         Returns nothing.
         ----------
         Arguments:
-            graph_data: pd.Dataframe - transport graph
+            graph_data: pd.Dataframe - transport graph data
             L_dict: dict() - L-dict from one of LWparsers of this class
             W_dict: dict() - W-dict from one of LWparsers of this class
         """
@@ -357,12 +374,30 @@ class DataHandler:
         return inds_to_nodes, correspondences, table
 
     def get_T_from_t(self, t, graph_data, model):
+        """
+        Calculate travel times given t's and model.
+        Честно говоря, я уже вообще не уверен, как это все работает, но
+        тут видимо на вход подаются t отдельных ребер а выдаются времена T для корреспонденций.
+        ---------
+        Arguments:
+            t: pd.Series
+                Видимо, времена требующиеся на проезд по отдельным ребрам t_e.
+            graph_data: dict
+                Output of DataHandler.getGraphData, all data about transport graph.
+            model: model.Model
+                Model of transport network.
+        ---------
+        Returns:
+            zone_travel_times: dict()
+                Contains as keys tuples (node_i, node_j) and as values its travel times T_ij.
+                Node indices are from original data.
+        """
         zone_travel_times = {}
 
+        # effectively makes a copy of model.graph
         inds_to_nodes, graph_correspondences_, graph_table_ = model.inds_to_nodes.copy(), \
                                                               model.graph_correspondences.copy(), \
                                                               model.graph_table.copy()
-
         graph_dh = tg.TransportGraph(graph_table_, len(inds_to_nodes), graph_data['links number'])
 
         for i, source in enumerate(graph_correspondences_):
