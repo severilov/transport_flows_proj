@@ -250,8 +250,9 @@ class AcceleratedSinkhorn:
                 Contains two 1-dimensional np.arrays of length n.
         """
         B = self.B_ij(lambda_l, lambda_w)
-        B_part = B.sum(axis=1) / B.sum() # (B(l, w) * 1) / (1 * B(l, w) * 1)
-        grads = [-self.l + B_part, -self.w + B_part]
+        B_part_l = B.sum(axis=1) / B.sum() # (B(l, w) * 1) / (1 * B(l, w) * 1)
+        B_part_w = B.sum(axis=0) / B.sum() # (B(l, w)^T * 1) / (1 * B(l, w) * 1)
+        grads = [-self.l + B_part_l, -self.w + B_part_w]
         return grads
 
     def d_ij(self, lambda_l, lambda_w):
@@ -330,7 +331,7 @@ class AcceleratedSinkhorn:
             v['k+1'] = [v_func(v, grad) for v, grad in zip(v['k'], phi_grad)]
             
             # check inner loop break condition
-            cond = self.phi(*x['k+1']) <= self.phi(*y['k']) + sum(phi_grad_norms)/(2*L['k+1'])
+            cond = self.phi(*x['k+1']) <= (self.phi(*y['k']) - sum(phi_grad_norms)/(2*L['k+1']))
             if cond:
                 d['k'] = self.d_ij(*y['k'])
                 d_hat['k+1'] = a['k+1']*d['k'] + L['k']*(a['k']**2)*d_hat['k'] / \
@@ -371,7 +372,7 @@ class AcceleratedSinkhorn:
 
         while not self.criterion(d_hat, x) or (k <= self.steps):
             L, a, v, x, d_hat = self.step(L, a, v, x, d_hat)
-        
+            k+=1
         return d_hat, x
 
     def criterion(self, d_ij, x) -> bool:
