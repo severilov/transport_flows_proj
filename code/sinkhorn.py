@@ -370,7 +370,7 @@ class AcceleratedSinkhorn:
         d_hat = self.d_ij(*x)
         k = 0
 
-        while not self.criterion(d_hat, x) or (k <= self.steps):
+        while not self.criterion(d_hat, x) and (k <= self.steps):
             L, a, v, x, d_hat = self.step(L, a, v, x, d_hat)
             k+=1
         return d_hat, x
