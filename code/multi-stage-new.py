@@ -1,4 +1,5 @@
 import warnings
+import sys
 from pathlib import Path
 # warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -15,8 +16,9 @@ from conf import parsers
 
 nodes_name = None
 
+# TODO: IDK what is best_sink_beta, maybe gamma from paper?
 best_sink_beta = 0.001
-sink_num_iter, sink_eps = 25000, 10 ** (-8)
+sink_steps, sink_eps, sink_eps_f, sink_eps_eq = 25000, 10 ** (-8), 10 ** (-8), 10 ** (-8)
 INF_COST = 100
 INF_TIME = 1e10
 
@@ -102,24 +104,29 @@ if __name__ == '__main__':
     T_dict = handler.get_T_from_t(graph_data['graph_table']['free_flow_time'],
                                   graph_data, model)
     T = handler.T_matrix_from_dict(T_dict, empty_corr_matrix.shape, old_to_new)
+    T = np.nan_to_num(T, nan=0, posinf=0, neginf=0)
+    T = np.nan_to_num(T * best_sink_beta, nan=INF_COST)
 
     for ms_i in range(12):
 
         print('iteration: ', ms_i)
 
-        s = skh.Sinkhorn(L, W, people_num, sink_num_iter, sink_eps)
-        T = np.nan_to_num(T, nan=0, posinf=0, neginf=0)
+        algorithm = sys.argv[1]
+        if algorithm == 'base':
+            s = skh.Sinkhorn(L, W, people_num, sink_steps, sink_eps)
+            cost_matrix = T
+            print('cost matrix', cost_matrix)
+            d_hat, _, _ = s.iterate(cost_matrix)
+        elif algorithm == 'accelerated':
+            s = skh.AcceleratedSinkhorn(L, W, T, people_num, 
+                                        sink_steps, sink_eps_f, sink_eps_eq)
+            d_hat, x = s.iterate()
+        print('rec', d_hat, np.sum(d_hat))
+        sink_correspondences_dict = handler.corr_matrix_to_dict(d_hat, new_to_old)
 
-        cost_matrix = np.nan_to_num(T * best_sink_beta, nan=INF_COST)
-
-        print('cost matrix', cost_matrix)
-        rec, _, _ = s.iterate(cost_matrix)
-        print('rec', rec, np.sum(rec))
-        sink_correspondences_dict = handler.corr_matrix_to_dict(rec, new_to_old)
-
-        L_new = np.nansum(rec, axis=1)
+        L_new = np.nansum(d_hat, axis=1)
         L_new /= np.nansum(L_new)
-        W_new = np.nansum(rec, axis=0)
+        W_new = np.nansum(d_hat, axis=0)
         W_new /= np.nansum(W_new)
 
         model.refresh_correspondences(graph_data, sink_correspondences_dict)
@@ -139,7 +146,7 @@ if __name__ == '__main__':
             print('flow, time: ', flow, time)
 
         T_dict = result['zone travel times']
-        T = handler.T_matrix_from_dict(T_dict, rec.shape, old_to_new)
+        T = handler.T_matrix_from_dict(T_dict, d_hat.shape, old_to_new)
         flows_inverse_func = get_times_inverse_func(graph_data['graph_table']['capacity'], result['times'], rho=0.15,
                                                     mu=0.25)
 
@@ -147,7 +154,7 @@ if __name__ == '__main__':
 
         np.savetxt('results/multi/flows/' + str(ms_i) + '_flows.txt', result['flows'], delimiter=' ')
         np.savetxt('results/multi/times/' + str(ms_i) + '_time.txt', result['times'], delimiter=' ')
-        np.savetxt('results/multi/corr_matrix/' + str(ms_i) + '_corr_matrix.txt', rec, delimiter=' ')
+        np.savetxt('results/multi/corr_matrix/' + str(ms_i) + '_corr_matrix.txt', d_hat, delimiter=' ')
         np.savetxt('results/multi/inverse_func/' + str(ms_i) + '_inverse_func.txt', flows_inverse_func,
                     delimiter=' ')
         np.savetxt('results/multi/subg/' + str(ms_i) + '_nabla_func.txt', subg, delimiter=' ')

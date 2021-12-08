@@ -173,7 +173,7 @@ class AcceleratedSinkhorn:
         self.people_num = people_num
         self.steps = steps
         self.eps_f = eps_f
-        self.eps_q = eps_eq
+        self.eps_eq = eps_eq
 
     def sinkhorn_step(self, k, y_l, y_w):
         """
@@ -315,7 +315,7 @@ class AcceleratedSinkhorn:
             # x['k'] and v['k'] are lists so y['k'] should be computed
             # by applying according function to them component wise
             y_func = lambda v, x: tau['k']*v + (1-tau['k'])*x 
-            y['k'] = list(map(y_func, zip(v['k'], x['k'])))
+            y['k'] = [y_func(v, x) for v, x in zip(v['k'], x['k'])]
 
             # now, compute gradient analytically
             phi_grad = self.grad_phi(*y['k'])
@@ -327,12 +327,12 @@ class AcceleratedSinkhorn:
 
             # do the same thing as when updating y['k'] to v['k']
             v_func = lambda v, grad: v - a['k+1']*grad
-            v['k+1'] = list(map(v_func, zip(v['k'], phi_grad)))
+            v['k+1'] = [v_func(v, grad) for v, grad in zip(v['k'], phi_grad)]
             
             # check inner loop break condition
-            cond = self.phi(*x['k+1']) <= self.phi(*y['k+1']) + sum(phi_grad_norms)/(2*L['k+1'])
+            cond = self.phi(*x['k+1']) <= self.phi(*y['k']) + sum(phi_grad_norms)/(2*L['k+1'])
             if cond:
-                d['k'] = self.d_ij(y['k'])
+                d['k'] = self.d_ij(*y['k'])
                 d_hat['k+1'] = a['k+1']*d['k'] + L['k']*(a['k']**2)*d_hat['k'] / \
                                         ( L['k+1']*(a['k+1']**2) )
                 break
@@ -361,12 +361,12 @@ class AcceleratedSinkhorn:
         """
         L = L_0
         if x_0 is None:
-            x_0 = [np.zeros(self.n), np.zeros(self.n)]
+            x = [np.zeros(self.n), np.zeros(self.n)]
         else:
             x = copy.deepcopy(x_0)
         a = a_0
         v = copy.deepcopy(x)
-        d_hat = self.d_ij(x_0)
+        d_hat = self.d_ij(*x)
         k = 0
 
         while not self.criterion(d_hat, x) or (k <= self.steps):
@@ -374,7 +374,7 @@ class AcceleratedSinkhorn:
         
         return d_hat, x
 
-    def criterion(self, d_ij, x, eps_f, eps_eq) -> bool:
+    def criterion(self, d_ij, x) -> bool:
         """
         Stop criterion for accelerated Sinkhorn from paper.
         ----------
@@ -391,29 +391,29 @@ class AcceleratedSinkhorn:
         phi = self.phi(*x)
         f = self.f(d_ij)
 
-        first = np.abs(phi + f) < eps_f
-        second = np.linalg.norm(d_ij.sum(axis=1) - self.l) < eps_eq
-        third = np.linalg.norm(d_ij.sum(axis=0) - self.w) < eps_eq
+        first = np.abs(phi + f) < self.eps_f
+        second = np.linalg.norm(d_ij.sum(axis=1) - self.l) < self.eps_eq
+        third = np.linalg.norm(d_ij.sum(axis=0) - self.w) < self.eps_eq
 
         return first and second and third
 
-    def redefine_lambdas(lambda_l, lambda_w):
-        """
-        Perform redefining lambdas as on top of page 9.
-        Interesting fact, this transformation is inverse to itself.
-        I mean, f(f(x)) = x. So to get original values, just apply
-        this function once again to transformed values.
-        Заскамили алгоритм на обратную функцию...
-        ----------
-        Arguments:
-            lambda_l, lambda_w: np.array
-                Should be 1-dimensional.
-        ----------
-        Returns:
-            new_lambda_l, new_lambda_w: np.array
-                Are 1-dimensional and have same lengths as original.
-        """
-        new_lambda_l = -lambda_l - 1/2
-        new_lambda_w = -lambda_w - 1/2
-        return new_lambda_l, new_lambda_w
+def redefine_lambdas(lambda_l, lambda_w):
+    """
+    Perform redefining lambdas as on top of page 9.
+    Interesting fact, this transformation is inverse to itself.
+    I mean, f(f(x)) = x. So to get original values, just apply
+    this function once again to transformed values.
+    Заскамили алгоритм на обратную функцию...
+    ----------
+    Arguments:
+        lambda_l, lambda_w: np.array
+            Should be 1-dimensional.
+    ----------
+    Returns:
+        new_lambda_l, new_lambda_w: np.array
+            Are 1-dimensional and have same lengths as original.
+    """
+    new_lambda_l = -lambda_l - 1/2
+    new_lambda_w = -lambda_w - 1/2
+    return new_lambda_l, new_lambda_w
 
