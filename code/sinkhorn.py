@@ -23,8 +23,9 @@ class Sinkhorn:
     def __init__(self, L, W, people_num, iter_num, eps):
         """
         Initialize all parameters for Sinkhorn.
-        ----------
-        Arguments:
+        
+        Parameters:
+        -----------
             L, W: np.array
                 Should be 1-dimensional and both have equal lengths.
             people_num: int
@@ -42,7 +43,7 @@ class Sinkhorn:
         self.eps = eps
         self.multistage_i = 0
 
-    def sinkhorn(self, k, cost_matrix, lambda_W_prev, lambda_L_prev):
+    def sinkhorn(self, k: int, cost_matrix, lambda_W_prev, lambda_L_prev):
         """
         Single iteration of Sinkhorn algorithm. In fact, this is algorithm 2 of 
         https://arxiv.org/pdf/2005.11604.pdf, written for original, not redefined
@@ -50,16 +51,18 @@ class Sinkhorn:
         to be either integrated into cost_matrix or equal 1.
         Takes as input lambda's values on previous iteration, cost_matrix and iteration number.
         Returns updated values of lambda_L and lambda_W.
-        ----------
-        Arguments:
+        
+        Parameters:
+        -----------
             k: int
                 number of iteration
             cost_matrix: np.array
                 T_ij from paper, its shape is (n x n).
             lambda_W_prev: np.array
                 Should be 1-dimensional and have lengths of n.
-        ----------
+        
         Returns:
+        --------
             lambda_L, lambda_W: np.array
                 Are 1-dimensional and have lengths n.
         """
@@ -77,21 +80,23 @@ class Sinkhorn:
             ))
         return lambda_W, lambda_L
 
-    def iterate(self, cost_matrix):
+    def iterate(self, cost_matrix: np.ndarray):
         """
         Perform Sinkhorn iteration process on cost_matrix.
         Start points are zero vectors.
         Receives as input cost_matrix T_ij from paper.
         Returns lambda_L, lambda_W and some analogue of d_i_j matrix from paper.
-        ----------
-        Arguments:
-            cost_matrix: np.array
+        
+        Parameters:
+        -----------
+            cost_matrix: np.ndarray
                 Should be 2-dimensional and have shape (n x n)
-        ----------
+        
         Returns:
-            r: np.array
+        --------
+            r: np.ndarray
                 Is 2-dimensional and has shape (n x n), containing matrix d(i, j).
-            lambda_L, lambda_W: np.array
+            lambda_L, lambda_W: np.ndarrays
                 Are 1-dimensional and have lengths n.
         """
         cost_matrix[cost_matrix == 0.0] = 100.0
@@ -114,21 +119,23 @@ class Sinkhorn:
         r = self.rec_d_i_j(lambda_Ln, lambda_Wn, cost_matrix)
         return r, lambda_L, lambda_W
 
-    def rec_d_i_j(self, lambda_L, lambda_W, cost_matrix):
+    def rec_d_i_j(self, lambda_L: np.ndarray, lambda_W: np.ndarray, cost_matrix: np.ndarray) -> np.ndarray:
         """
         Calculate some analogue of matrix d_i_j from paper. Not very clear why, but
         here we don't have normalizing denominator (sum of matrix values). Also
         for some purpose matrix is multiplied by total number of people.
-        ----------
-        Arguments:
-            lambda_L, lambda_W: np.array
-                Should be 1-dimensional and have lengths of n.
-            cost_matrix: np.ndarray
-                Should be 2-dimensional and have shape (n x n)
-        ----------
+        
+        Parameters:
+        -----------
+        lambda_L, lambda_W: np.ndarrays
+            Should be 1-dimensional and have lengths of n.
+        cost_matrix: np.ndarray
+            Should be 2-dimensional and have shape (n x n)
+        
         Returns:
-            d_i_j: np.array
-                Is 2-dimensional and has shape (n x n), containing matrix d(i, j).
+        --------
+        d_i_j: np.ndarray
+            Is 2-dimensional and has shape (n x n), containing matrix d(i, j).
         """
         er = np.exp(-1 - cost_matrix - (np.reshape(lambda_L, (self.n, 1)) + lambda_W))
         d_i_j = er * self.people_num
@@ -153,17 +160,18 @@ class AcceleratedSinkhorn:
     def __init__(self, l, w, T_ij, people_num, steps, eps_f, eps_eq):
         """
         Initialize AcceleratedSinkhorn algorithm instance. Unlike implementation
-        of original algortihm, T_ij is removed from arguments of methods and 
+        of original algortihm, T_ij is removed from Parameters of methods and 
         implemented as attribute of instance.
-        ----------
-        Arguments:
-            l, w: np.array
-                Should be 1-dimensional and have lengths of n.
-            T_ij: np.ndarray
-                Should be 2-dimensional and have shape (n x n).
-            people_num: int
-            steps: int
-            eps_f, eps_eq: float
+        
+        Parameters:
+        -----------
+        l, w: np.array
+            Should be 1-dimensional and have lengths of n.
+        T_ij: np.ndarray
+            Should be 2-dimensional and have shape (n x n).
+        people_num: int
+        steps: int
+        eps_f, eps_eq: float
         """
         self.l = l
         self.w = w
@@ -175,7 +183,7 @@ class AcceleratedSinkhorn:
         self.eps_f = eps_f
         self.eps_eq = eps_eq
 
-    def sinkhorn_step(self, k, y_l, y_w):
+    def sinkhorn_step(self, k: int, y_l: np.ndarray, y_w: np.ndarray) -> tuple:
         """
         Here is version of Sinkhorn iteration for redefined lambda's (here they are
         called as y_l, y_w). It could be optimized, but I intentionally do not do that to
@@ -193,14 +201,16 @@ class AcceleratedSinkhorn:
         """
         Compute matrix B_ij from lambdas. Lambdas are assumed to be already redefined 
         as in top of the page 9 in russian paper.
-        ----------
-        Arguments:
-            lambda_l, lambda_w: np.array
-                Should be 1-dimensional and have lengths of n.
-        ----------
+        
+        Parameters:
+        -----------
+        lambda_l, lambda_w: np.array
+            Should be 1-dimensional and have lengths of n.
+        
         Returns:
-            B_ij: np.ndarray
-                Is 2-dimensional and has shape (n x n), containing matrix B(i, j).
+        --------
+        B_ij: np.ndarray
+            Is 2-dimensional and has shape (n x n), containing matrix B(i, j).
         """
         B_ij = np.exp(-self.T_ij + lambda_l.reshape((self.n, 1)) + lambda_w)
         return B_ij
@@ -209,45 +219,51 @@ class AcceleratedSinkhorn:
         """
         f-function from paper. Gamma assumed to be 1 (or already taken into 
         account in T_ij).
-        ----------
-        Arguments:
-            d_ij: np.ndarray
-                Should be 2-dimensional and have shape (n x n).
-        ----------
+        
+        Parameters:
+        -----------
+        d_ij: np.ndarray
+            Should be 2-dimensional and have shape (n x n).
+        
         Returns:
-            f: float
+        --------
+        f: float
         """
         f = np.sum(self.T_ij * d_ij) + np.sum(d_ij * np.log(d_ij))
         return f
 
-    def phi(self, lambda_l, lambda_w):
+    def phi(self, lambda_l: np.ndarray, lambda_w: np.ndarray) -> float:
         """
         Phi-function from paper. Lambdas are assumed to be already redefined 
         as in top of the page 9 in russian paper.
-        ----------
-        Arguments:
-            lambda_l, lambda_w: np.arrays
-                Should be 1-dimensional and have lengths of n.
-        ----------
+        
+        Parameters:
+        -----------
+        lambda_l, lambda_w: np.ndarrays
+            Should be 1-dimensional and have lengths of n.
+        
         Returns:
-            phi: float
+        --------
+        phi : float
         """
         phi = np.log(self.B_ij(lambda_l, lambda_w).sum()) - \
                 (lambda_l * self.l).sum() - (lambda_w * self.w).sum()
         return phi
 
-    def grad_phi(self, lambda_l, lambda_w):
+    def grad_phi(self, lambda_l: np.ndarray, lambda_w: np.ndarray) -> list:
         """
         Grad of phi-function from paper. Lambdas are assumed to be already redefined 
         as in top of the page 9 in russian paper.
-        ----------
-        Arguments:
-            lambda_l, lambda_w: np.arrays
-                Should be 1-dimensional and have lengths of n.
-        ----------
+        
+        Parameters:
+        -----------
+        lambda_l, lambda_w : np.ndarrays
+            Should be 1-dimensional and have lengths of n.
+        
         Returns:
-            grads: list
-                Contains two 1-dimensional np.arrays of length n.
+        --------
+        grads : list
+            Contains two 1-dimensional np.arrays of length n.
         """
         B = self.B_ij(lambda_l, lambda_w)
         B_part_l = B.sum(axis=1) / B.sum() # (B(l, w) * 1) / (1 * B(l, w) * 1)
@@ -255,45 +271,49 @@ class AcceleratedSinkhorn:
         grads = [-self.l + B_part_l, -self.w + B_part_w]
         return grads
 
-    def d_ij(self, lambda_l, lambda_w):
+    def d_ij(self, lambda_l: np.ndarray, lambda_w: np.ndarray) -> np.ndarray:
         """
         Compute matrix d_ij from lambdas. Lambdas are assumed to be already redefined 
         as in top of the page 9 in russian paper.
-        ----------
-        Arguments:
-            lambda_l, lambda_w: np.array
-                Should be 1-dimensional and have lengths of n.
-        ----------
+        
+        Parameters:
+        -----------
+        lambda_l, lambda_w: np.ndarrays
+            Should be 1-dimensional and have lengths of n.
+        
         Returns:
-            B_ij: np.ndarray
-                Is 2-dimensional and has shape (n x n), containing matrix B(i, j).
+        --------
+        B_ij: np.ndarray
+            Is 2-dimensional and has shape (n x n), containing matrix B(i, j).
         """
         B = self.B_ij(lambda_l, lambda_w)
         d_ij = B / B.sum() # # (B(l, w) * 1) / (1 * B(l, w) * 1)
         return d_ij
 
-    def step(self, L_k, a_k, v_k, x_k, d_hat_k):
+    def step(self, L_k, a_k, v_k, x_k, d_hat_k) -> tuple:
         """
         Single iteration of accelerated Sinkhorn. Lambdas are assumed to be already redefined 
         as in top of the page 9 in russian paper.
         All variables fully correspond to those in paper.
-        ----------
-        Arguments:
-            L_k, a_k: float
-            v_k, x_k: lists
-                Both should have two 1-dimensional np.arrays of lengths n.
-            d_hat_k: np.ndarray
-                Should be 2-dimensional and have shape (n x n).
-        ----------
+        
+        Parameters:
+        -----------
+        L_k, a_k: float
+        v_k, x_k: lists
+            Both should have two 1-dimensional np.arrays of lengths n.
+        d_hat_k: np.ndarray
+            Should be 2-dimensional and have shape (n x n).
+        
         Returns:
-            L: float
-            a: float
-            v: list
-                Contains two 1-dimensional np.arrays of length n.
-            x: list
-                Contains two 1-dimensional np.arrays of length n.
-            d_hat: np.ndarray
-                Is 2-dimensional and has shape (n x n), containing matrix d_hat(i, j).
+        --------
+        L: float
+        a: float
+        v: list
+            Contains two 1-dimensional np.arrays of length n.
+        x: list
+            Contains two 1-dimensional np.arrays of length n.
+        d_hat: np.ndarray
+            Is 2-dimensional and has shape (n x n), containing matrix d_hat(i, j).
         """
         L = {'k': L_k, 'k+1': None}
         a = {'k': a_k, 'k+1': None}
@@ -341,24 +361,26 @@ class AcceleratedSinkhorn:
         
         return L['k+1'], a['k+1'], v['k+1'], x['k+1'], d_hat['k+1']
     
-    def iterate(self, x_0=None, L_0=1, a_0=0):
+    def iterate(self, x_0: list=None, L_0: float=1, a_0: float=0) -> tuple:
         """
         Iteration process of accelerated Sinkhorn from paper.
         x_0 is starting point.
         L_0 is initial estimate of Lipschitz constant.
         a_0 is God knows what
-        ----------
-        Arguments:
-            x_0: list
-                Should have two 1-dimensional np.arrays of length n.
-                If None, default version of two zero vectors is used.
-            L_0, a_0: float
-        ----------
+        
+        Parameters:
+        -----------
+        x_0: list
+            Should have two 1-dimensional np.ndarrays of length n.
+            If None, default version of two zero vectors is used.
+        L_0, a_0: float
+        
         Returns:
-            d_hat: np.ndarray
-                2-dimensional np.ndarray of shape (n x n), containing matrix d_hat(i, j).
-            x: list
-                Contains two 1-dimensional np.arrays of length n.
+        --------
+        d_hat: np.ndarray
+            2-dimensional np.ndarray of shape (n x n), containing matrix d_hat(i, j).
+        x: list
+            Contains two 1-dimensional np.arrays of length n.
         """
         L = L_0
         if x_0 is None:
@@ -375,19 +397,20 @@ class AcceleratedSinkhorn:
             k+=1
         return d_hat, x
 
-    def criterion(self, d_ij, x) -> bool:
+    def criterion(self, d_ij: np.ndarray, x: list) -> bool:
         """
         Stop criterion for accelerated Sinkhorn from paper.
-        ----------
-        Arguments:
-            d_ij: np.ndarray
-                Should be 2-dimensional and have shape (n x n).
-            x: list
-                Should have two 1-dimensional np.arrays of length n.
-            eps_f, eps_eq: float
-        ----------
+        
+        Parameters:
+        -----------
+        d_ij: np.ndarray
+            Should be 2-dimensional and have shape (n x n).
+        x: list
+            Should have two 1-dimensional np.ndarrays of length n.
+        
         Returns:
-            bool
+        --------
+        is_satisfied: bool
         """
         phi = self.phi(*x)
         f = self.f(d_ij)
@@ -398,21 +421,23 @@ class AcceleratedSinkhorn:
 
         return first and second and third
 
-def redefine_lambdas(lambda_l, lambda_w):
+def redefine_lambdas(lambda_l: np.ndarray, lambda_w: np.ndarray) -> tuple:
     """
     Perform redefining lambdas as on top of page 9.
     Interesting fact, this transformation is inverse to itself.
     I mean, f(f(x)) = x. So to get original values, just apply
     this function once again to transformed values.
     Заскамили алгоритм на обратную функцию...
-    ----------
-    Arguments:
-        lambda_l, lambda_w: np.array
-            Should be 1-dimensional.
-    ----------
+    
+    Parameters:
+    -----------
+    lambda_l, lambda_w: np.ndarrays
+        Should be 1-dimensional.
+    
     Returns:
-        new_lambda_l, new_lambda_w: np.array
-            Are 1-dimensional and have same lengths as original.
+    --------
+    new_lambda_l, new_lambda_w: np.ndarrays
+        Are 1-dimensional and have same lengths as original.
     """
     new_lambda_l = -lambda_l - 1/2
     new_lambda_w = -lambda_w - 1/2
