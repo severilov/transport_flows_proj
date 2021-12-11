@@ -9,6 +9,7 @@ import transport_graph as tg
 import copy
 
 import conf
+from model import Model
 
 pd.set_option('display.max_columns', None)
 
@@ -16,30 +17,30 @@ TNTP_TRIPS_FNAME = '../data/Custom_trips.tntp'  # '../data/SiouxFalls_trips.tntp
 TNTP_NET_FNAME = '../data/Custom_trips.tntp'  # '../data/SiouxFalls_net.tntp'
 
 
-# TODO: DOCUMENTATION!!!
 class DataHandler:
     @staticmethod
-    def vladik_net_parser():
+    def vladik_net_parser() -> tuple:
         """
         Read data/vl_links.txt and data/vl_nodes.txt files containing Vladivostok transport network data.
         By default, reads _test versions of these files.
-        --------
+        
         Returns:
-            df: pd.Dataframe
-                Contains following columns:
-                    init_node
-                    term_node
-                    capacity
-                    free_flow_time
-                    ['xa', 'xb', 'ya', 'yb'] - geographic coordinates of 'init_node' and 'term_node'
-            nodes: pd.Dataframe
-                Contains following columns:
-                    node
-                    ['x', 'y', 'z'] - geographic coordinates of nodes
-
-                        
+        --------
+        df: pd.DataFrame
+            Contains following columns:
+                init_node
+                term_node
+                capacity
+                free_flow_time
+                ['xa', 'xb', 'ya', 'yb'] - geographic coordinates of ``init_node`` and ``term_node``
+        nodes: pd.DataFrame
+            Contains following columns:
+                node
+                ['x', 'y', 'z'] - geographic coordinates of nodes.
+        first_thru_node: int
+            IDK what is this, but it is used later when creating columns 
+            ``init_node_thru`` and ``term_node_thru``.
         """
-        graph_data = {}
         links = pd.read_csv(conf.vl_links_file, sep='\t', skiprows=0)
         links_ab = links[['ANODE', 'BNODE', 'cap_ab']].copy()
         links_ab.columns = ['init_node', 'term_node', 'capacity']
@@ -122,14 +123,17 @@ class DataHandler:
         return df, nt, first_thru_node
 
     @staticmethod
-    def vladik_corr_parser():
+    def vladik_corr_parser() -> tuple:
         """
         Read data/vl_trips.txt file and get constraints on correspondencies. Поясню на русском - 
         получаем (l, w) из статьи, там это называется источники и стоки корреспонденций.
-        --------
+        
         Returns:
-            dict(int: int) - dict with nodes as keys and corresponding l's
-            dict(int: int) - dict with nodes as keys and corresponding w's
+        --------
+        L_dict: dict(int: int)
+            Dict with nodes as keys and corresponding l's.
+        W_dict: dict(int: int)
+            Dict with nodes as keys and corresponding w's.
         """
         with open(conf.vl_trips_file, 'r') as fin:
             fin = list(fin)[1:]
@@ -173,23 +177,25 @@ class DataHandler:
 
         return L_dict, W_dict
 
-    def GetGraphData(self, parser, columns):
+    def GetGraphData(self, parser: function, columns: list) -> dict:
         """
         Get data from desired dataset and convert it to pd.Dataframe of desired format.
-        ----------
-        Arguments:
-            parser: function()
-                One of net_parsers of these class.
-            columns: list(str)
-                Which columns to leave in resulting dataset.
-        ----------
+        
+        Parameters:
+        -----------
+        parser: function
+            One of net_parsers of these class.
+        columns: list(str)
+            Which columns to leave in resulting dataset.
+        
         Returns:
-            graph_data: dict()
-                Contains 4 fields:
-                'graph_table' - pd.Dataframe, data for transport graph;
-                'nodes_number' - int, number of unique nodes in graph;
-                'links_number' - int, number of links in graph;
-                'nodes_table' - pd.Dataframe, nodes with their coordinates;
+        --------
+        graph_data: dict
+            Contains 4 fields:
+            'graph_table' - pd.Dataframe, data for transport graph;
+            'nodes_number' - int, number of unique nodes in graph;
+            'links_number' - int, number of links in graph;
+            'nodes_table' - pd.Dataframe, nodes with their coordinates;
         """
         graph_data = {}
         gt, nt, first_thru_node = parser()
@@ -208,22 +214,24 @@ class DataHandler:
         return graph_data
 
     @staticmethod
-    def T_matrix_from_dict(T_dict, shape, old_to_new):
+    def T_matrix_from_dict(T_dict: dict, shape: tuple, old_to_new: dict) -> np.ndarray:
         """
         Create matrix from T_dict. T_dict should contain original nodes indices.
-        ----------
-        Arguments:
-            T_dict: dict
-                Keys - (node_i, node_j), values - T_ij
-            shape: tuple of ints
-                Shape of output matrix
-            old_to_new: dict(int: int)
-                Mapping between original nodes indices and new.
-        ---------
+        
+        Parameters:
+        -----------
+        T_dict: dict
+            Keys - (node_i, node_j), values - T_ij
+        shape: tuple of ints
+            Shape of output matrix
+        old_to_new: dict(int: int)
+            Mapping between original nodes indices and new.
+        
         Returns:
-            T_matrix: np.array
-                Array of given shape. Indices of T_matrix and T_dict
-                are linked with old_to_new mapping.
+        --------
+        T_matrix: np.ndarray
+            Array of given shape. Indices of T_matrix and T_dict
+            are linked with old_to_new mapping.
         """
         T = np.zeros(shape)
         for key in T_dict.keys():
@@ -232,33 +240,44 @@ class DataHandler:
         return T
 
     @staticmethod
-    def GetLW_dicts(parser):
+    def GetLW_dicts(parser: function) -> tuple:
         """
         Wrapper for LWparsers of this class.
-        ----------
-        Arguments:
-            parser: function() - one of corr_parsers of this class.
-        ----------
+        
+        Parameters:
+        -----------
+        parser: function
+            One of corr_parsers of this class.
+        
         Returns:
-            L_dict: dict(int: int)
-                dict with nodes as keys and corresponding l's
-            W_dict: dict(int: int)
-                dict with nodes as keys and corresponding w's
+        --------
+        L_dict: dict(int: int)
+            Contains nodes as keys and corresponding l's as values.
+        W_dict: dict(int: int)
+            Contains nodes as keys and corresponding w's as values.
         """
         L_dict, W_dict = parser()
 
         return L_dict, W_dict
 
     @staticmethod
-    def save_input_data_to_res(graph_data, L_dict, W_dict):
+    def save_input_data_to_res(graph_data: pd.DataFrame, L_dict: dict, W_dict: dict) -> None:
         """
         Save transport graph data and LW-dicts to the folder results/input_data.
         Returns nothing.
-        ----------
-        Arguments:
-            graph_data: pd.Dataframe - transport graph data
-            L_dict: dict() - L-dict from one of LWparsers of this class
-            W_dict: dict() - W-dict from one of LWparsers of this class
+        
+        Parameters:
+        -----------
+        graph_data: pd.DataFrame
+            Transport graph data
+        L_dict: dict
+            L-dict from one of LWparsers of this class
+        W_dict: dict
+            W-dict from one of LWparsers of this class
+
+        Returns:
+        --------
+            None
         """
         root = 'results/input_data/'
         with open(root + 'graph_data.pickle', 'wb') as fp:
@@ -292,22 +311,25 @@ class DataHandler:
             C[i, j] = raw_data_line[column_ind]
         return C
 
-    def reindexed_empty_corr_matrix(self, corr_dict):
+    def reindexed_empty_corr_matrix(self, corr_dict: dict) -> tuple:
         """
         Reindex nodes and return corresponding matrices and empty correspondence matrix.
         Receives as input dict containing init_nodes as keys. Every value of this dict is dict of form
-        {'targets': list(int)} containing list of all term_nodes.
+        {'targets': list(int)}, containing list of all term_nodes.
+        
+        Parameters:
         ----------
-        Arguments:
-            corr_dict: dict(int: dict('targets': list(int)))
-        ----------
+        corr_dict: dict(int: dict)
+            Contains as values dicts of form {'targets': list(int)}.
+        
         Returns:
-            empty_corr_matrix: np.array
-                (n x n) matrix of zeros, where n is number of unique nodes in init_nodes and term_nodes.
-            old_to_new: dict(int: int)
-                mapping between old indexes of nodes and new
-            new_to_old: dict(int: int)
-                mapping between new indexes of nodes and old
+        --------
+        empty_corr_matrix: np.ndarray
+            (n x n) matrix of zeros, where n is number of unique nodes in init_nodes and term_nodes.
+        old_to_new: dict(int: int)
+            Mapping between old indexes of nodes and new.
+        new_to_old: dict(int: int)
+            Mapping between new indexes of nodes and old.
         """
         indexes = list(set(corr_dict.keys()) | set(sum([d['targets'] for d in corr_dict.values()], [])))
 
@@ -373,24 +395,26 @@ class DataHandler:
         inds_to_nodes = dict(zip(range(len(nodes)), nodes))
         return inds_to_nodes, correspondences, table
 
-    def get_T_from_t(self, t, graph_data, model):
+    def get_T_from_t(self, t: pd.Series, graph_data: dict, model: Model) -> dict:
         """
         Calculate travel times given t's and model.
         Честно говоря, я уже вообще не уверен, как это все работает, но
         тут видимо на вход подаются t отдельных ребер а выдаются времена T для корреспонденций.
-        ---------
-        Arguments:
-            t: pd.Series
-                Видимо, времена требующиеся на проезд по отдельным ребрам t_e.
-            graph_data: dict
-                Output of DataHandler.getGraphData, all data about transport graph.
-            model: model.Model
-                Model of transport network.
-        ---------
+        
+        Parameters:
+        -----------
+        t: pd.Series
+            Видимо, времена требующиеся на проезд по отдельным ребрам t_e.
+        graph_data: dict
+            Output of DataHandler.getGraphData, all data about transport graph.
+        model: model.Model
+            Model of transport network.
+        
         Returns:
-            zone_travel_times: dict()
-                Contains as keys tuples (node_i, node_j) and as values its travel times T_ij.
-                Node indices are from original data.
+        --------
+        zone_travel_times: dict
+            Contains as keys tuples (node_i, node_j) and as values its travel times T_ij.
+            Node indices are from original data.
         """
         zone_travel_times = {}
 

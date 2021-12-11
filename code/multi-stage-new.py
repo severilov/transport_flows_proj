@@ -29,28 +29,30 @@ def get_times_inverse_func(capacity, times, rho=0.15, mu=0.25):
     return np.transpose((capacities / rho) * (np.power(times / freeflowtimes, mu) - 1.0))
 
 
-def get_LW(L_dict, W_dict, new_to_old):
+def get_LW(L_dict: np.ndarray, W_dict: np.ndarray, new_to_old: float) -> tuple:
     """
     Given L- and W-dicts and new nodes mapping, return L and W as np.arrays.
     Also returns people_num, total sum of L's.
     Resulting arrays contain on i'th place value for new_to_old[i] node.
     Also, L and W are divided by their means to satisfy constraints from paper.
+    
+    Parameters:
     ----------
-    Arguments:
-        L_dict: dict(int: int)
-            mapping between nodes and their l's
-        W_dict: dict(int: int)
-            mapping between nodes and their w's
-        new_to_old: dict(int: int)
-            mapping between old indices of nodes and new
-    ----------
+    L_dict: dict(int: int)
+        mapping between nodes and their l's
+    W_dict: dict(int: int)
+        mapping between nodes and their w's
+    new_to_old: dict(int: int)
+        mapping between old indices of nodes and new
+    
     Returns:
-        L: np.array
-            Normalized array of l values.
-        w: np.array
-            Normalized array of w values.
-        people_num: int
-            Total sum of l's. Has the meaning of total number of people.
+    --------
+    L: np.ndarray
+        Normalized array of l values.
+    w: np.ndarray
+        Normalized array of w values.
+    people_num: int
+        Total sum of l's. Has the meaning of total number of people.
     """
     # reindex and turn to np.array
     L = np.array([L_dict[new_to_old[i]] for i in range(len(L_dict))], dtype=np.double)
@@ -61,10 +63,10 @@ def get_LW(L_dict, W_dict, new_to_old):
     W /= np.nansum(W)
     return L, W, people_num
 
-def create_results_dir():
+def create_results_dir() -> None:
     """
     Create folders necessary for storing results.
-    There is no arguments because it would be a pain the ass.
+    There is no parameters because it would be a pain the ass.
     """
     results_path = Path('results/')
     children = []
