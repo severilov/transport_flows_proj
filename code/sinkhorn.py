@@ -176,6 +176,7 @@ class AcceleratedSinkhorn:
         self.l = l
         self.w = w
         self.T_ij = T_ij
+        self.T_ij[self.T_ij == 0.0] = 100.0
         assert (len(l) == len(w))
         self.n = len(l)
         self.people_num = people_num
@@ -354,7 +355,7 @@ class AcceleratedSinkhorn:
             cond = self.phi(*x['k+1']) <= (self.phi(*y['k']) - sum(phi_grad_norms)/(2*L['k+1']))
             if cond:
                 d['k'] = self.d_ij(*y['k'])
-                d_hat['k+1'] = a['k+1']*d['k'] + L['k']*(a['k']**2)*d_hat['k'] / \
+                d_hat['k+1'] = (a['k+1']*d['k'] + L['k']*(a['k']**2)*d_hat['k']) / \
                                         ( L['k+1']*(a['k+1']**2) )
                 break
             L['k+1'] = 2*L['k+1']
@@ -395,7 +396,9 @@ class AcceleratedSinkhorn:
         while not self.criterion(d_hat, x) and (k <= self.steps):
             L, a, v, x, d_hat = self.step(L, a, v, x, d_hat)
             k+=1
-        return d_hat, x
+
+        reconstruction = d_hat * self.people_num
+        return reconstruction, x
 
     def criterion(self, d_ij: np.ndarray, x: list) -> bool:
         """
