@@ -1,6 +1,6 @@
-parsers = 'vladik'
-# parsers = 'tntpd'
-# parsers = 'custom'
+net_name = 'vladik'
+# net_name = 'tntpd'
+# net_name = 'custom'
 
 vl_links_file = 'data/vl_links'
 vl_trips_file = 'data/vl_trips'
