@@ -177,7 +177,7 @@ class DataHandler:
 
         return L_dict, W_dict
 
-    def GetGraphData(self, parser: function, columns: list) -> dict:
+    def GetGraphData(self, parser, columns: list) -> dict:
         """
         Get data from desired dataset and convert it to pd.Dataframe of desired format.
         
@@ -240,7 +240,7 @@ class DataHandler:
         return T
 
     @staticmethod
-    def GetLW_dicts(parser: function) -> tuple:
+    def GetLW_dicts(parser) -> tuple:
         """
         Wrapper for LWparsers of this class.
         
