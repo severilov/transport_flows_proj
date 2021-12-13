@@ -83,9 +83,8 @@ class Model:
         """
         table = graph_table.copy()
         # Don't completely understand what happens here either.
-        # These inits and terms are those with id's less than 
-        # 'first_thru_node' parameter of data-handler.vladik_net_parser
-        # I suppose these are 'true' inits and terms, and through_nodes are just intermediate?
+        # But, effectively, 'inits' and 'terms' will be empty since
+        # 'init_node_thru' and 'term_node_thru' are all True
         inits = np.unique(table['init_node'][table['init_node_thru'] == False])
         terms = np.unique(table['term_node'][table['term_node_thru'] == False])
         through_nodes = np.unique([table['init_node'][table['init_node_thru'] == True],

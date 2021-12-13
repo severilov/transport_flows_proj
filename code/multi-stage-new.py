@@ -85,7 +85,7 @@ if __name__ == '__main__':
     total_od_flow = people_num
     print(f'L, W, people_num {L, W, people_num}, total_od_flow: {total_od_flow}')
     
-    model = md.Model(graph_data, empty_corr_dict, total_od_flow, mu=0.25)
+    model = md.Model(graph_data, empty_corr_dict, total_od_flow, mu=mu)
 
     # initialize dict with T_ij values from `free_flow_time` as first iteration
     T_dict = dh.get_T_from_t(graph_data['graph_table']['free_flow_time'],

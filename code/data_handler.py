@@ -242,7 +242,7 @@ def GetGraphData(parser, columns: list) -> dict:
     gt = gt[columns]
 
     # following two lines of code I don't understand much
-    # these fields later are used in model.__init__
+    # But, effectively 'init_node_thru' and 'term_node_thru' will all be True
     gt.insert(loc=gt.columns.get_loc('init_node') + 1, column='init_node_thru',
                 value=(gt['init_node'] >= first_thru_node))
     gt.insert(loc=gt.columns.get_loc('term_node') + 1, column='term_node_thru',
