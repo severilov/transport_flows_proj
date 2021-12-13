@@ -1,7 +1,6 @@
 import warnings
 import sys
 from pathlib import Path
-import os
 # warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import numpy as np
@@ -69,9 +68,8 @@ def create_results_dir() -> None:
     Create folders necessary for storing results.
     There is no parameters because it would be a pain the ass.
     """
-    if not os.path.exists('../results/'):
-        os.makedirs('../results/')
-    results_path = Path('../results/')
+    results_path = Path('results/')
+    results_path.mkdir(exist_ok=True)
     children = []
     for child in ['input_data', 'iter', 'multi']:
         children.append(results_path / child)
