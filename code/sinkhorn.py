@@ -420,7 +420,7 @@ class AcceleratedSinkhorn:
         while not self.criterion(d_hat, x) and (k <= self.steps):
             L, a, v, x, d_hat = self.step(L, a, v, x, d_hat)
             k+=1
-
+        print(k)
         reconstruction = d_hat * self.people_num
         return reconstruction, x
 

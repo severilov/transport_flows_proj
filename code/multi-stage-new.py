@@ -19,7 +19,8 @@ nodes_name = None
 
 # TODO: IDK what is best_sink_beta, maybe gamma from paper?
 best_sink_beta = 0.001
-sink_steps, sink_eps, sink_eps_f, sink_eps_eq = 25000, 10 ** (-8), 10 ** (-8), 10 ** (-8)
+sink_steps, sink_eps = 25000, 10 ** (-8)
+sink_eps_f, sink_eps_eq = 10 ** (-2), 10 ** (-2)
 INF_COST = 100
 INF_TIME = 1e10
 
@@ -98,12 +99,12 @@ if __name__ == '__main__':
 
     empty_corr_dict = {source: {'targets': list(W_dict.keys())} for source in L_dict.keys()}
     empty_corr_matrix, old_to_new, new_to_old = handler.reindexed_empty_corr_matrix(empty_corr_dict)
-    print('fill correspondence_matrix')
+    #print('fill correspondence_matrix')
 
     L, W, people_num = get_LW(L_dict, W_dict, new_to_old)
     total_od_flow = people_num
 
-    print(f'L, W, people_num {L, W, people_num}, total_od_flow: {total_od_flow}')
+    #print(f'L, W, people_num {L, W, people_num}, total_od_flow: {total_od_flow}')
     model = md.Model(graph_data, empty_corr_dict, total_od_flow, mu=0.25)
     # initialize dict with T_ij values from free flow times as first iteration
     T_dict = handler.get_T_from_t(graph_data['graph_table']['free_flow_time'],
@@ -112,7 +113,7 @@ if __name__ == '__main__':
     T = np.nan_to_num(T, nan=0, posinf=0, neginf=0)
     T = np.nan_to_num(T * best_sink_beta, nan=INF_COST)
 
-    for ms_i in range(12):
+    for ms_i in range(100):
 
         print('iteration: ', ms_i)
 
@@ -120,13 +121,13 @@ if __name__ == '__main__':
         if algorithm == 'base':
             s = skh.Sinkhorn(L, W, people_num, sink_steps, sink_eps)
             cost_matrix = T
-            print('cost matrix', cost_matrix)
+            #print('cost matrix', cost_matrix)
             d_hat, _, _ = s.iterate(cost_matrix)
         elif algorithm == 'accelerated':
             s = skh.AcceleratedSinkhorn(L, W, T, people_num, 
                                         sink_steps, sink_eps_f, sink_eps_eq)
             d_hat, x = s.iterate()
-        print('rec', d_hat, np.sum(d_hat))
+        #print('rec', d_hat, np.sum(d_hat))
         sink_correspondences_dict = handler.corr_matrix_to_dict(d_hat, new_to_old)
 
         L_new = np.nansum(d_hat, axis=1)
@@ -146,9 +147,9 @@ if __name__ == '__main__':
 
         model.graph.update_flow_times(result['times'])
 
-        print(result.keys(), np.shape(result['flows']))
-        for flow, time in zip(result['flows'], result['times']):
-            print('flow, time: ', flow, time)
+        #print(result.keys(), np.shape(result['flows']))
+        #for flow, time in zip(result['flows'], result['times']):
+        #    print('flow, time: ', flow, time)
 
         T_dict = result['zone travel times']
         T = handler.T_matrix_from_dict(T_dict, d_hat.shape, old_to_new)
