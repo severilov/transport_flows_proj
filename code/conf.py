@@ -2,8 +2,8 @@ net_name = 'vladik'
 # net_name = 'tntpd'
 # net_name = 'custom'
 
-vl_links_file = 'data/vl_links'
-vl_trips_file = 'data/vl_trips'
+vl_links_file = './data/vl_links'
+vl_trips_file = './data/vl_trips'
 
 # small testing subnet
 vl_links_file += '_test'

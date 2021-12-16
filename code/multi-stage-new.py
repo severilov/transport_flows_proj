@@ -1,10 +1,13 @@
 import warnings
 import sys
 from pathlib import Path
+import os
+import time
 # warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 np.set_printoptions(suppress=True)
 
@@ -20,7 +23,8 @@ nodes_name = None
 
 # TODO: IDK what is best_sink_beta, maybe gamma from paper?
 best_sink_beta = 0.001
-sink_steps, sink_eps, sink_eps_f, sink_eps_eq = 25000, 10 ** (-8), 10 ** (-8), 10 ** (-8)
+sink_steps, sink_eps = 25000, 10 ** (-8)
+sink_eps_f, sink_eps_eq = 10 ** (-1), 10 ** (-1)
 max_iter = 2
 alpha = 0.9
 rho = 0.15
@@ -61,7 +65,9 @@ def create_results_dir() -> None:
     Create folders necessary for storing results.
     There is no parameters because it would be a pain in the ass.
     """
-    results_path = Path('results/')
+    if not os.path.exists('../results/'):
+        os.makedirs('../results/')
+    results_path = Path('../results/')
     children = []
     for child in ['input_data', 'iter', 'multi']:
         children.append(results_path / child)
@@ -79,11 +85,11 @@ if __name__ == '__main__':
     # create initial correspondence matrix, L-dict and W-dict in fact have same keys
     empty_corr_dict = {source: {'targets': list(W_dict.keys())} for source in L_dict.keys()}
     empty_corr_matrix, old_to_new, new_to_old = dh.reindexed_empty_corr_matrix(empty_corr_dict)
-    print('fill correspondence_matrix')
+    #print('fill correspondence_matrix')
 
     L, W, people_num = dh.get_LW(L_dict, W_dict, new_to_old) # all values in L, W should be in range [0, 1]
     total_od_flow = people_num
-    print(f'L, W, people_num {L, W, people_num}, total_od_flow: {total_od_flow}')
+    #print(f'L, W, people_num {L, W, people_num}, total_od_flow: {total_od_flow}')
     
     model = md.Model(graph_data, empty_corr_dict, total_od_flow, mu=0.25)
 
@@ -94,9 +100,9 @@ if __name__ == '__main__':
     T = np.nan_to_num(T * best_sink_beta, nan=INF_COST, posinf=INF_COST, neginf=INF_COST)
     T[T == 0.0] = 100.0
 
-    for ms_i in range(12):
+    for ms_i in range(100):
 
-        print('iteration: ', ms_i)
+        print('-'*20 + f'iteration: {ms_i}' + '-'*20)
 
         # find reconstructed correspondence matrix d_hat
         # e.g find new d(T)
@@ -104,13 +110,15 @@ if __name__ == '__main__':
         if algorithm == 'base':
             s = skh.Sinkhorn(L, W, people_num, sink_steps, sink_eps)
             cost_matrix = T
-            print('cost matrix', cost_matrix)
+            #print('cost matrix', cost_matrix)
             d_hat, _, _ = s.iterate(cost_matrix)
+            np.savetxt('./results/multi/d_hats/base_d_hat.txt', d_hat, delimiter=' ')
         elif algorithm == 'accelerated':
             s = skh.AcceleratedSinkhorn(L, W, T, people_num, 
                                         sink_steps, sink_eps_f, sink_eps_eq)
             d_hat, x = s.iterate()
-        print('rec', d_hat, np.sum(d_hat))
+            np.savetxt('./results/multi/d_hats/accelerated_d_hat.txt', d_hat, delimiter=' ')
+        #print('rec', d_hat, np.sum(d_hat))
         sink_correspondences_dict = dh.corr_matrix_to_dict(d_hat, new_to_old)
 
         # update L and W from reconstructed d_hat
@@ -134,9 +142,9 @@ if __name__ == '__main__':
                                             base_flows=alpha * graph_data['graph_table']['capacity'])
         model.graph.update_flow_times(result['times'])
 
-        print(result.keys(), np.shape(result['flows']))
-        for flow, time in zip(result['flows'], result['times']):
-            print('flow, time: ', flow, time)
+        #print(result.keys(), np.shape(result['flows']))
+        #for flow, time in zip(result['flows'], result['times']):
+        #    print(f'flow: {flow}, \t time: {time}')
 
         # update T
         T_dict = result['zone travel times']
@@ -149,8 +157,27 @@ if __name__ == '__main__':
 
         subg = result['subg']
 
-        np.savetxt('results/multi/flows/' + str(ms_i) + '_flows.txt', result['flows'], delimiter=' ')
-        np.savetxt('results/multi/times/' + str(ms_i) + '_time.txt', result['times'], delimiter=' ')
-        np.savetxt('results/multi/corr_matrix/' + str(ms_i) + '_corr_matrix.txt', d_hat, delimiter=' ')
-        np.savetxt('results/multi/inverse_func/' + str(ms_i) + '_inverse_func.txt', flows, delimiter=' ')
-        np.savetxt('results/multi/subg/' + str(ms_i) + '_nabla_func.txt', subg, delimiter=' ')
+        np.savetxt(f'results/multi/flows/{algorithm}_' + str(ms_i) + '_flows.txt', result['flows'], delimiter=' ')
+        np.savetxt(f'results/multi/times/{algorithm}_' + str(ms_i) + '_time.txt', result['times'], delimiter=' ')
+        np.savetxt(f'results/multi/corr_matrix/{algorithm}_' + str(ms_i) + '_corr_matrix.txt', d_hat, delimiter=' ')
+        np.savetxt(f'results/multi/inverse_func/{algorithm}_' + str(ms_i) + '_inverse_func.txt', flows, delimiter=' ')
+        np.savetxt(f'results/multi/subg/{algorithm}_' + str(ms_i) + '_nabla_func.txt', subg, delimiter=' ')
+
+
+    '''
+        algorithm = sys.argv[1]
+        start = time.time()
+        if algorithm == 'base':
+            s = skh.Sinkhorn(L, W, people_num, sink_steps, sink_eps)
+            cost_matrix = T
+            # print('cost matrix', cost_matrix)
+            d_hat, _, _ = s.iterate(cost_matrix)
+            np.savetxt('./results/multi/d_hats/base_d_hat.txt', d_hat, delimiter=' ')
+        elif algorithm == 'accelerated':
+            s = skh.AcceleratedSinkhorn(L, W, T, people_num,
+                                        sink_steps, sink_eps_f, sink_eps_eq)
+            d_hat, x = s.iterate()
+            np.savetxt('./results/multi/d_hats/accelerated_d_hat.txt', d_hat, delimiter=' ')
+        finish = time.time()
+        print(finish-start)
+    '''

@@ -114,7 +114,7 @@ class Sinkhorn:
             lambda_L, lambda_W = lambda_Ln, lambda_Wn
 
             if delta < self.eps:
-                print(f"number of iterations in Sinkhorn:{k}")
+                print(f"number of iterations in base Sinkhorn:{k}")
                 break
         r = self.rec_d_i_j(lambda_Ln, lambda_Wn, cost_matrix)
         return r, lambda_L, lambda_W
@@ -394,8 +394,10 @@ class AcceleratedSinkhorn:
         k = 0
 
         while not self.criterion(d_hat, x) and (k <= self.steps):
+            #print(k)
             L, a, v, x, d_hat = self.step(L, a, v, x, d_hat)
-            k+=1
+            k += 1
+        print(f"number of iterations in accelerated Sinkhorn:{k}")
 
         reconstruction = d_hat * self.people_num
         return reconstruction, x
@@ -417,6 +419,9 @@ class AcceleratedSinkhorn:
         """
         phi = self.phi(*x)
         f = self.f(d_ij)
+        #print(f'f+phi: {np.abs(phi + f)}')
+        #print(f'd-l: {np.linalg.norm(d_ij.sum(axis=1) - self.l)}')
+        #print(f'd-w: {np.linalg.norm(d_ij.sum(axis=0) - self.w)}')
 
         first = np.abs(phi + f) < self.eps_f
         second = np.linalg.norm(d_ij.sum(axis=1) - self.l) < self.eps_eq

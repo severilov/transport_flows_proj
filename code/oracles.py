@@ -192,7 +192,7 @@ class PhiBigOracle(BaseOracle):
         self.t_current = self.func_current = self.grad_current = None
         
         if not PhiBigOracle.pred_to_edges:
-            print('calculating pred to edges') 
+            #print('calculating pred to edges')
             PhiBigOracle.pred_to_edges = get_pred_to_edges(graph)
         
         self.auto_oracles = []
