@@ -56,7 +56,7 @@ class DataHandler:
         df = df[df.capacity > 0]
         df.drop_duplicates(inplace=True)
 
-        nodes = pd.read_csv('./data/vl_nodes.txt', sep='\t', skiprows=0).set_index('node')
+        nodes = pd.read_csv(conf.vl_nodes_file, sep='\t', skiprows=0).set_index('node')
         xa, xb, ya, yb = [], [], [], []
         for i in df.index:
             an, bn = df.init_node[i], df.term_node[i]

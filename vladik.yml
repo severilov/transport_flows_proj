@@ -2,6 +2,7 @@ name: vladik
 channels:
   - default
   - conda-forge
+  - plotly
 dependencies:
   - python=3.8.5
   - scipy
@@ -11,5 +12,7 @@ dependencies:
   - numba
   - graph-tool
   - matplotlib
+  - plotly
+  - seaborn
   - scanf
   - tqdm
