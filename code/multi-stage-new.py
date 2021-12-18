@@ -20,9 +20,9 @@ from conf import net_name
 
 nodes_name = None
 
-best_sink_beta = 10 ** (-3)
+best_sink_beta = 10 ** (-2)
 sink_steps, sink_eps = 25000, 10 ** (-8)
-sink_eps_f, sink_eps_eq = 10 ** (-2), 10 ** (-2)
+sink_eps_f, sink_eps_eq = 0.12, 0.12 #10 * best_sink_beta, 10 * best_sink_beta  # ~gamma * 3 * ln(n)
 max_iter = 2
 alpha = 0.9
 rho = 0.15
@@ -99,7 +99,8 @@ if __name__ == '__main__':
     T = np.nan_to_num(T * best_sink_beta, nan=INF_COST, posinf=INF_COST, neginf=INF_COST)
     T[T == 0.0] = 100.0
 
-    for ms_i in range(22):
+    sinkhorns_it_nums = []
+    for ms_i in tqdm(range(23)):
 
         print('-'*20 + f'iteration: {ms_i}' + '-'*20)
 
@@ -109,11 +110,13 @@ if __name__ == '__main__':
         if algorithm == 'base':
             s = skh.Sinkhorn(L, W, people_num, sink_steps, sink_eps)
             cost_matrix = T
-            d_hat, _, _ = s.iterate(cost_matrix)
+            d_hat, _, _, k = s.iterate(cost_matrix)
+            sinkhorns_it_nums.append(k)
         elif algorithm == 'accelerated':
             s = skh.AcceleratedSinkhorn(L, W, T, people_num, 
                                         sink_steps, sink_eps_f, sink_eps_eq)
-            d_hat, x = s.iterate()
+            d_hat, x, k = s.iterate()
+            sinkhorns_it_nums.append(k)
         #print('rec', d_hat, np.sum(d_hat))
         sink_correspondences_dict = dh.corr_matrix_to_dict(d_hat, new_to_old)
 
@@ -122,13 +125,14 @@ if __name__ == '__main__':
 
         # solve task `14` from original paper `https://arxiv.org/pdf/2012.04516.pdf`.
         # e.g. find new T(d)
-        for i, eps_abs in enumerate(np.logspace(1, 3, 1)):
-            solver_kwargs = {'eps_abs': eps_abs,
-                             'max_iter': max_iter}
+        #for i, eps_abs in enumerate(np.logspace(1, 3, 1)):
+        eps_abs = 10.0
+        solver_kwargs = {'eps_abs': eps_abs,
+                         'max_iter': max_iter}
 
-            result = model.find_equilibrium(solver_name='ustm', composite=True,
-                                            solver_kwargs=solver_kwargs,
-                                            base_flows=alpha * graph_data['graph_table']['capacity'])
+        result = model.find_equilibrium(solver_name='ustm', composite=True,
+                                        solver_kwargs=solver_kwargs,
+                                        base_flows=alpha * graph_data['graph_table']['capacity'])
         model.graph.update_flow_times(result['times'])
 
         # update T
@@ -147,3 +151,4 @@ if __name__ == '__main__':
         np.savetxt(f'results/multi/corr_matrix/{algorithm}_' + str(ms_i) + '_corr_matrix.txt', d_hat, delimiter=' ')
         np.savetxt(f'results/multi/inverse_func/{algorithm}_' + str(ms_i) + '_inverse_func.txt', flows, delimiter=' ')
         np.savetxt(f'results/multi/subg/{algorithm}_' + str(ms_i) + '_nabla_func.txt', subg, delimiter=' ')
+    np.savetxt(f'results/multi/{algorithm}_sinkhorns_it_nums.txt', sinkhorns_it_nums, delimiter=' ')

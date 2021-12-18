@@ -74,6 +74,7 @@ class Sinkhorn:
                 / self.L, axis=0
             ))
         else:
+
             lambda_L = lambda_L_prev
             lambda_W = np.log(np.nansum(
                 (np.exp(-lambda_L - 1 - cost_matrix.T)).T
@@ -119,7 +120,7 @@ class Sinkhorn:
                 print(f"number of iterations in base Sinkhorn:{k}")
                 break
         r = self.rec_d_i_j(lambda_Ln, lambda_Wn, cost_matrix)
-        return r, lambda_L, lambda_W
+        return r, lambda_L, lambda_W, k
 
 
     def rec_d_i_j(self, lambda_L: np.ndarray, lambda_W: np.ndarray, cost_matrix: np.ndarray) -> np.ndarray:
@@ -424,7 +425,7 @@ class AcceleratedSinkhorn:
         print(f"number of iterations in accelerated Sinkhorn:{k}")
 
         reconstruction = d_hat * self.people_num
-        return reconstruction, x
+        return reconstruction, x, k
 
 
     def criterion(self, d_ij: np.ndarray, x: list) -> bool:
