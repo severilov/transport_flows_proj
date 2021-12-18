@@ -165,12 +165,12 @@ class Model:
                                                           self.graph.initial_times, self.graph.capacities,
                                                           rho=self.rho, mu=self.mu, base_flows=base_flows)
         if composite == True or solver_name == 'fwm':
-            if not solver_name == 'fwm':
-                print('Composite optimization...')
+            #if not solver_name == 'fwm':
+                #print('Composite optimization...')
             oracle = phi_big_oracle
             prox = h_oracle.prox
         else:
-            print('Non-composite optimization...')
+            #print('Non-composite optimization...')
             oracle = phi_big_oracle + h_oracle
 
             def prox_func(grad, point, A):
@@ -182,8 +182,8 @@ class Model:
                 return np.maximum(point - grad / A, self.graph.initial_times)
 
             prox = prox_func
-        print('Oracles created...')
-        print(starting_msg)
+        #print('Oracles created...')
+        #print(starting_msg)
 
         if solver_name == 'fwm':
             result = solver_func(oracle,

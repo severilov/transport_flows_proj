@@ -46,7 +46,7 @@ class Ustm:
                 inner_iters_num += 1
 
                 alpha = 0.5 / self.L_value + sqrt(0.25 / self.L_value ** 2 + self.A_prev / self.L_value)
-                print('L_value, A, alpha', self.L_value, self.A, alpha)
+                #print('L_value, A, alpha', self.L_value, self.A, alpha)
                 self.A = self.A_prev + alpha
                 self.y = (alpha * self.u_prev + self.A_prev * self.t_prev) / self.A
                 grad_y = oracle.grad(self.y)
@@ -70,7 +70,7 @@ class Ustm:
             self.t_prev = self.t
             self.u_prev = self.u
             self.grad_sum_prev = self.grad_sum
-            print('A, alpha', self.A, alpha)
+            #print('A, alpha', self.A, alpha)
             self.flows_weighted = (self.flows_weighted * (self.A - alpha) + flows * alpha) / self.A
 
             self.primal, self.dual, self.duality_gap, self.state_msg = primal_dual_oracle(self.flows_weighted, self.t)
