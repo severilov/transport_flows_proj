@@ -20,9 +20,9 @@ from conf import net_name
 
 nodes_name = None
 
-best_sink_beta = 10 ** (-8)
+best_sink_beta = 10 ** (-3)
 sink_steps, sink_eps = 25000, 10 ** (-8)
-sink_eps_f, sink_eps_eq = 10 ** (-1), 10 ** (-1)
+sink_eps_f, sink_eps_eq = 10 ** (-2), 10 ** (-2)
 max_iter = 2
 alpha = 0.9
 rho = 0.15
@@ -99,7 +99,7 @@ if __name__ == '__main__':
     T = np.nan_to_num(T * best_sink_beta, nan=INF_COST, posinf=INF_COST, neginf=INF_COST)
     T[T == 0.0] = 100.0
 
-    for ms_i in range(100):
+    for ms_i in range(22):
 
         print('-'*20 + f'iteration: {ms_i}' + '-'*20)
 
@@ -110,12 +110,10 @@ if __name__ == '__main__':
             s = skh.Sinkhorn(L, W, people_num, sink_steps, sink_eps)
             cost_matrix = T
             d_hat, _, _ = s.iterate(cost_matrix)
-            np.savetxt('./results/multi/d_hats/base_d_hat.txt', d_hat, delimiter=' ')
         elif algorithm == 'accelerated':
             s = skh.AcceleratedSinkhorn(L, W, T, people_num, 
                                         sink_steps, sink_eps_f, sink_eps_eq)
             d_hat, x = s.iterate()
-            np.savetxt('./results/multi/d_hats/accelerated_d_hat.txt', d_hat, delimiter=' ')
         #print('rec', d_hat, np.sum(d_hat))
         sink_correspondences_dict = dh.corr_matrix_to_dict(d_hat, new_to_old)
 
