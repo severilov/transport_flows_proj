@@ -1,6 +1,7 @@
 # model parameters:
 import copy
 import numpy as np
+import pandas as pd
 import transport_graph as tg
 
 import oracles
@@ -14,21 +15,22 @@ import solvers.weighted_dual_averages_method as wda
 
 
 class Model:
-    def __init__(self, graph_data, graph_correspondences, total_od_flow, mu=0.25, rho=0.15):
+    def __init__(self, graph_data: pd.DataFrame, graph_correspondences: dict, total_od_flow, mu=0.25, rho=0.15):
         """
-        Reindexes nodes according to their roles in graph and creates TransportGraph instance.
-        ----------
-        Arguments:
-            graph_data: pd.Dataframe
-                This is output dict of DataHandler.getGraphData.
-            graph_correspondencies: dict
-                This is dict of form like 'empty_corr_dict' from multi-stage-new.py
-            total_od_flow: int
-                Total number of people or, formally, sum of l's from paper.
-            mu: float
-                Parameter for computing cost function tau(f) from paper.
-            rho: float
-                Хз что это такое, нужно в Оракулах.
+        Reindex nodes according to their roles in graph and create TransportGraph instance.
+        
+        Parameters:
+        -----------
+        graph_data: pd.Dataframe
+            This is output dict of DataHandler.getGraphData.
+        graph_correspondencies: dict
+            This is dict of form like 'empty_corr_dict' from multi-stage-new.py
+        total_od_flow: int
+            Total number of people or, formally, sum of l's from paper.
+        mu: float
+            Parameter for computing cost function tau(f) from paper.
+        rho: float
+            Хз что это такое, нужно в Оракулах.
         """
         self.total_od_flow = total_od_flow
         self.mu = mu
@@ -37,46 +39,52 @@ class Model:
             self._index_nodes(graph_data['graph_table'], graph_correspondences, fill_corrs=False)
         self.graph = tg.TransportGraph(self.graph_table, len(self.inds_to_nodes), graph_data['links number'])
 
-    def refresh_correspondences(self, graph_data, corrs_dict):
+    def refresh_correspondences(self, graph_data: pd.DataFrame, corrs_dict: dict) -> None:
         """
         Wrapper for Model._index_nodes method. See docstring for that method for more info.
-        ----------
-        Arguments:
-            graph_table: pd.Dataframe
-                This is 'graph_table' from DataHandler.getGraphData output dict.
-            graph_correspondencies: dict
-                This is dict of form like 'empty_corr_dict' from multi-stage-new.py
+        
+        Parameters:
+        -----------
+        graph_table: pd.Dataframe
+            This is 'graph_table' from `data-handler.getGraphData` output dict.
+        graph_correspondencies: dict
+            This is dict of form like `empty_corr_dict` from `multi-stage-new.py`
+
+        Returns:
+        --------
+        None
         """
         self.inds_to_nodes, self.graph_correspondences, _ = self._index_nodes(graph_data['graph_table'], corrs_dict)
 
     @staticmethod
-    def _index_nodes(graph_table, graph_correspondences, fill_corrs=True):
+    def _index_nodes(graph_table: pd.DataFrame, graph_correspondences: dict, fill_corrs=True) -> tuple:
         """
         Another reindexing of nodes. This time they are indexed to ensure
         that 'true' init nodes are first, then 'through' nodes and then 'true' term.
+        
+        Parameters:
         ----------
-        Arguments:
-            graph_table: pd.Dataframe
-                This is 'graph_table' from DataHandler.getGraphData output dict.
-            graph_correspondencies: dict
-                This is dict of form like 'empty_corr_dict' from multi-stage-new.py
-            fill_corrs: bool
-                If graph_correspondencies dict already have correspondence values,
-                fill'em in reindexed dict.
-        ----------
+        graph_table: pd.Dataframe
+            This is 'graph_table' from DataHandler.getGraphData output dict.
+        graph_correspondencies: dict
+            This is dict of form like 'empty_corr_dict' from multi-stage-new.py
+        fill_corrs: bool
+            If graph_correspondencies dict already have correspondence values,
+            fill'em in reindexed dict.
+        
         Returns:
-            inds_to_nodes: dict(int: int)
-                Mapping from new nodes indices to old.
-            correspondences: dict
-                Reindexed graph_correspondences.
-            table: pd.Dataframe
-                graph_table with reindexed 'init_node' and 'term_node' columns.
+        --------
+        inds_to_nodes: dict(int: int)
+            Mapping from new nodes indices to old.
+        correspondences: dict
+            Reindexed graph_correspondences.
+        table: pd.Dataframe
+            graph_table with reindexed 'init_node' and 'term_node' columns.
         """
         table = graph_table.copy()
         # Don't completely understand what happens here either.
-        # These inits and terms are those with id's less than 
-        # 'first_thru_node' parameter of DataHandler.vladik_net_parser
-        # I suppose these are 'true' inits and terms, and through_nodes are just intermediate?
+        # But, effectively, 'inits' and 'terms' will be empty since
+        # 'init_node_thru' and 'term_node_thru' are all True
         inits = np.unique(table['init_node'][table['init_node_thru'] == False])
         terms = np.unique(table['term_node'][table['term_node_thru'] == False])
         through_nodes = np.unique([table['init_node'][table['init_node_thru'] == True],
@@ -102,7 +110,27 @@ class Model:
 
         return inds_to_nodes, correspondences, table
 
-    def find_equilibrium(self, solver_name='ustm', composite=True, solver_kwargs={}, base_flows=None):
+    def find_equilibrium(self, solver_name: str='ustm', composite: bool=True, 
+                         solver_kwargs: dict={}, base_flows=None) -> dict:
+        """
+        Solve task `14` from original paper using one of available methods.
+
+        Parameters:
+        -----------
+        solver_name: {'fwm', 'ustm', 'ugd', 'wda', 'sd'}, str
+        composite: bool
+        solver_kwargs: dict
+        base_flows: pd.Series or np.ndarray
+
+        Returns:
+        --------
+        results: dict
+            Contains following fields:
+            `'times'`: `t` from paper;
+            `'zone travel times'`: `T` from paper in form of dict;
+            `'subg'`: subgradient, it seems;
+            other fields from optimizer.
+        """
         if solver_name == 'fwm':
             solver_func = fwm.frank_wolfe_method
             starting_msg = 'Frank-Wolfe method...'
@@ -174,11 +202,11 @@ class Model:
         # print('att! ', subg_t, np.shape(subg_t))
         result['subg'] = subg_t
 
-        for source in self.graph_correspondences:
-            targets = self.graph_correspondences[source]['targets']
+        for source, targets_dict in self.graph_correspondences.items():
+            targets = targets_dict['targets']
             travel_times, pred_map = self.graph.shortest_distances(source, targets, result['times'])
 
-            subg_t = phi_big_oracle.grad(result['times'])
+            # subg_t = phi_big_oracle.grad(result['times'])
 
             # print('types: ', type(subg_t), type(travel_times))
             # print('in model.py, travel_times: ', travel_times)
