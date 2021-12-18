@@ -414,6 +414,7 @@ def distributor_L_W(array):
         zero_num = array_dict[0]
     except KeyError:
         print('this array without 0')
+
         return array
     array[max_value_index] = max_value - zero_num
 

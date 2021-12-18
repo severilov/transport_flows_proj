@@ -7,7 +7,7 @@ np.set_printoptions(suppress=True)
 
 class Sinkhorn:
     """
-    Корректную реализация Синхорна. Совпадает с псевдокодом алгоритма 2 
+    Корректная реализация Синхорна. Совпадает с псевдокодом алгоритма 2 
     из https://arxiv.org/pdf/2005.11604.pdf. Замечания три:
     1) не обнаружено параметра gamma (видимо либо он уже зашит в косты, либо
     его принимают равным 1;
@@ -42,6 +42,7 @@ class Sinkhorn:
         self.num_iter = iter_num
         self.eps = eps
         self.multistage_i = 0
+
 
     def sinkhorn(self, k: int, cost_matrix, lambda_W_prev, lambda_L_prev):
         """
@@ -79,6 +80,7 @@ class Sinkhorn:
                 / self.W, axis=0
             ))
         return lambda_W, lambda_L
+
 
     def iterate(self, cost_matrix: np.ndarray):
         """
@@ -118,6 +120,7 @@ class Sinkhorn:
                 break
         r = self.rec_d_i_j(lambda_Ln, lambda_Wn, cost_matrix)
         return r, lambda_L, lambda_W
+
 
     def rec_d_i_j(self, lambda_L: np.ndarray, lambda_W: np.ndarray, cost_matrix: np.ndarray) -> np.ndarray:
         """
@@ -184,11 +187,25 @@ class AcceleratedSinkhorn:
         self.eps_f = eps_f
         self.eps_eq = eps_eq
 
+
     def sinkhorn_step(self, k: int, y_l: np.ndarray, y_w: np.ndarray) -> tuple:
         """
-        Here is version of Sinkhorn iteration for redefined lambda's (here they are
-        called as y_l, y_w). It could be optimized, but I intentionally do not do that to
-        achieve the best possible clarity of code.
+        Here is version of default Sinkhorn iteration for redefined lambda's 
+        (here they are called as y_l, y_w). It could be optimized, but I 
+        intentionally do not do that to achieve the best possible 
+        clarity of code.
+
+        Parameters:
+        -----------
+        k: int
+            Number of iteration.
+        y_l, y_w: np.ndarrays
+            Should be 1-dimensional and have lengths of n.
+
+        Returns:
+        --------
+        y_l_new, y_w_new: np.ndarray
+            Both has the same shape as `y_l` and `y_w`.
         """
         if k % 2 == 0:
             y_l_new = y_l + np.log(self.l) - np.log(self.B_ij(y_l, y_w).sum(axis=1))
@@ -198,9 +215,10 @@ class AcceleratedSinkhorn:
             y_w_new = y_w + np.log(self.w) - np.log(self.B_ij(y_l, y_w).sum(axis=0))
         return y_l_new, y_w_new
 
+
     def B_ij(self, lambda_l, lambda_w):
         """
-        Compute matrix B_ij from lambdas. Lambdas are assumed to be already redefined 
+        Compute matrix `B_ij` from lambdas. Lambdas are assumed to be already redefined 
         as in top of the page 9 in russian paper.
         
         Parameters:
@@ -215,6 +233,7 @@ class AcceleratedSinkhorn:
         """
         B_ij = np.exp(-self.T_ij + lambda_l.reshape((self.n, 1)) + lambda_w)
         return B_ij
+
 
     def f(self, d_ij):
         """
@@ -233,6 +252,7 @@ class AcceleratedSinkhorn:
         f = np.sum(self.T_ij * d_ij) + np.sum(d_ij * np.log(d_ij))
         return f
 
+
     def phi(self, lambda_l: np.ndarray, lambda_w: np.ndarray) -> float:
         """
         Phi-function from paper. Lambdas are assumed to be already redefined 
@@ -250,6 +270,7 @@ class AcceleratedSinkhorn:
         phi = np.log(self.B_ij(lambda_l, lambda_w).sum()) - \
                 (lambda_l * self.l).sum() - (lambda_w * self.w).sum()
         return phi
+
 
     def grad_phi(self, lambda_l: np.ndarray, lambda_w: np.ndarray) -> list:
         """
@@ -272,6 +293,7 @@ class AcceleratedSinkhorn:
         grads = [-self.l + B_part_l, -self.w + B_part_w]
         return grads
 
+
     def d_ij(self, lambda_l: np.ndarray, lambda_w: np.ndarray) -> np.ndarray:
         """
         Compute matrix d_ij from lambdas. Lambdas are assumed to be already redefined 
@@ -290,6 +312,7 @@ class AcceleratedSinkhorn:
         B = self.B_ij(lambda_l, lambda_w)
         d_ij = B / B.sum() # # (B(l, w) * 1) / (1 * B(l, w) * 1)
         return d_ij
+
 
     def step(self, L_k, a_k, v_k, x_k, d_hat_k) -> tuple:
         """
@@ -361,7 +384,8 @@ class AcceleratedSinkhorn:
             L['k+1'] = 2*L['k+1']
         
         return L['k+1'], a['k+1'], v['k+1'], x['k+1'], d_hat['k+1']
-    
+
+
     def iterate(self, x_0: list=None, L_0: float=1, a_0: float=0) -> tuple:
         """
         Iteration process of accelerated Sinkhorn from paper.
@@ -402,6 +426,7 @@ class AcceleratedSinkhorn:
         reconstruction = d_hat * self.people_num
         return reconstruction, x
 
+
     def criterion(self, d_ij: np.ndarray, x: list) -> bool:
         """
         Stop criterion for accelerated Sinkhorn from paper.
@@ -429,6 +454,7 @@ class AcceleratedSinkhorn:
 
         return first and second and third
 
+
 def redefine_lambdas(lambda_l: np.ndarray, lambda_w: np.ndarray) -> tuple:
     """
     Perform redefining lambdas as on top of page 9.
@@ -450,4 +476,3 @@ def redefine_lambdas(lambda_l: np.ndarray, lambda_w: np.ndarray) -> tuple:
     new_lambda_l = -lambda_l - 1/2
     new_lambda_w = -lambda_w - 1/2
     return new_lambda_l, new_lambda_w
-

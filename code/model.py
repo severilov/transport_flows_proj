@@ -166,7 +166,7 @@ class Model:
                                                           rho=self.rho, mu=self.mu, base_flows=base_flows)
         if composite == True or solver_name == 'fwm':
             #if not solver_name == 'fwm':
-                #print('Composite optimization...')
+            #    print('Composite optimization...')
             oracle = phi_big_oracle
             prox = h_oracle.prox
         else:
