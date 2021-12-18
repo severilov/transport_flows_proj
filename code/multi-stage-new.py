@@ -14,7 +14,6 @@ np.set_printoptions(suppress=True)
 import sinkhorn as skh
 import data_handler as dh
 import model as md
-import csv
 
 from conf import net_name
 
