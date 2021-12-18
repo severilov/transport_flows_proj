@@ -21,8 +21,7 @@ from conf import net_name
 
 nodes_name = None
 
-# TODO: IDK what is best_sink_beta, maybe gamma from paper?
-best_sink_beta = 0.001
+best_sink_beta = 10 ** (-8)
 sink_steps, sink_eps = 25000, 10 ** (-8)
 sink_eps_f, sink_eps_eq = 10 ** (-1), 10 ** (-1)
 max_iter = 2
@@ -110,7 +109,6 @@ if __name__ == '__main__':
         if algorithm == 'base':
             s = skh.Sinkhorn(L, W, people_num, sink_steps, sink_eps)
             cost_matrix = T
-            #print('cost matrix', cost_matrix)
             d_hat, _, _ = s.iterate(cost_matrix)
             np.savetxt('./results/multi/d_hats/base_d_hat.txt', d_hat, delimiter=' ')
         elif algorithm == 'accelerated':
@@ -121,15 +119,8 @@ if __name__ == '__main__':
         #print('rec', d_hat, np.sum(d_hat))
         sink_correspondences_dict = dh.corr_matrix_to_dict(d_hat, new_to_old)
 
-        # update L and W from reconstructed d_hat
-        L_new = np.nansum(d_hat, axis=1)
-        L_new /= np.nansum(L_new)
-        W_new = np.nansum(d_hat, axis=0)
-        W_new /= np.nansum(W_new)
-
         # synchronize indices of correspondence matrix
         model.refresh_correspondences(graph_data, sink_correspondences_dict)
-
 
         # solve task `14` from original paper `https://arxiv.org/pdf/2012.04516.pdf`.
         # e.g. find new T(d)
@@ -141,10 +132,6 @@ if __name__ == '__main__':
                                             solver_kwargs=solver_kwargs,
                                             base_flows=alpha * graph_data['graph_table']['capacity'])
         model.graph.update_flow_times(result['times'])
-
-        #print(result.keys(), np.shape(result['flows']))
-        #for flow, time in zip(result['flows'], result['times']):
-        #    print(f'flow: {flow}, \t time: {time}')
 
         # update T
         T_dict = result['zone travel times']
@@ -162,22 +149,3 @@ if __name__ == '__main__':
         np.savetxt(f'results/multi/corr_matrix/{algorithm}_' + str(ms_i) + '_corr_matrix.txt', d_hat, delimiter=' ')
         np.savetxt(f'results/multi/inverse_func/{algorithm}_' + str(ms_i) + '_inverse_func.txt', flows, delimiter=' ')
         np.savetxt(f'results/multi/subg/{algorithm}_' + str(ms_i) + '_nabla_func.txt', subg, delimiter=' ')
-
-
-    '''
-        algorithm = sys.argv[1]
-        start = time.time()
-        if algorithm == 'base':
-            s = skh.Sinkhorn(L, W, people_num, sink_steps, sink_eps)
-            cost_matrix = T
-            # print('cost matrix', cost_matrix)
-            d_hat, _, _ = s.iterate(cost_matrix)
-            np.savetxt('./results/multi/d_hats/base_d_hat.txt', d_hat, delimiter=' ')
-        elif algorithm == 'accelerated':
-            s = skh.AcceleratedSinkhorn(L, W, T, people_num,
-                                        sink_steps, sink_eps_f, sink_eps_eq)
-            d_hat, x = s.iterate()
-            np.savetxt('./results/multi/d_hats/accelerated_d_hat.txt', d_hat, delimiter=' ')
-        finish = time.time()
-        print(finish-start)
-    '''
